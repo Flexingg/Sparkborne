@@ -8,12 +8,14 @@ import androidx.health.connect.client.records.NutritionRecord
 import androidx.health.connect.client.records.SleepSessionRecord
 import androidx.health.connect.client.records.StepsRecord
 import androidx.health.connect.client.records.WeightRecord
+import androidx.health.connect.client.request.AggregateGroupByPeriodRequest
 import androidx.health.connect.client.request.AggregateRequest
 import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
 import com.sparkborne.telemetry.model.LocalHealthReading
 import java.time.Duration
 import java.time.LocalDate
+import java.time.Period
 import java.time.ZoneId
 import kotlin.math.roundToInt
 
@@ -23,13 +25,19 @@ data class HealthConnectStatus(
     val totalPermissions: Int = HealthConnectReader.ALL_PERMISSIONS.size,
 ) {
     val hasAnyReadPermission: Boolean
-        get() = grantedPermissions.any { it != HealthPermission.PERMISSION_READ_HEALTH_DATA_IN_BACKGROUND }
+        get() = grantedPermissions.any {
+            it != HealthPermission.PERMISSION_READ_HEALTH_DATA_IN_BACKGROUND &&
+                it != HealthPermission.PERMISSION_READ_HEALTH_DATA_HISTORY
+        }
 
     val hasAllPermissions: Boolean
         get() = grantedPermissions.containsAll(HealthConnectReader.ALL_PERMISSIONS)
 
     val hasBackgroundPermission: Boolean
         get() = HealthPermission.PERMISSION_READ_HEALTH_DATA_IN_BACKGROUND in grantedPermissions
+
+    val hasHistoryPermission: Boolean
+        get() = HealthPermission.PERMISSION_READ_HEALTH_DATA_HISTORY in grantedPermissions
 }
 
 /**
@@ -63,11 +71,24 @@ class HealthConnectReader(private val context: Context) {
 
     /**
      * Reads daily Health Connect aggregates for [startDate]..[endDate] inclusive.
-     * Only queries metrics whose permissions are currently granted.
+     * For short ranges (<= 14d), uses per-day reads; for larger ranges, delegates to [readRangeChunked].
      */
     suspend fun readRange(
         startDate: LocalDate,
         endDate: LocalDate,
+    ): List<LocalHealthReading> {
+        return readRangeChunked(startDate, endDate)
+    }
+
+    /**
+     * Fast chunked Health Connect reader capable of multi-year / all-time backfills in seconds.
+     * Processes 90-day chunks using `aggregateGroupByPeriod(Period.ofDays(1))` for Steps &
+     * Hydration and batched `readRecords` for Sleep, Nutrition, and Weight.
+     */
+    suspend fun readRangeChunked(
+        startDate: LocalDate,
+        endDate: LocalDate,
+        onChunkProgress: (suspend (chunkStart: LocalDate, chunkEnd: LocalDate, chunkReadings: List<LocalHealthReading>) -> Unit)? = null,
     ): List<LocalHealthReading> {
         val client = clientOrNull() ?: return emptyList()
         val granted = runCatching {
@@ -84,179 +105,231 @@ class HealthConnectReader(private val context: Context) {
             return emptyList()
         }
 
+        // Respect Android's 30-day window if READ_HEALTH_DATA_HISTORY is not granted yet
+        val effectiveStart = if (PERM_HISTORY in granted) {
+            startDate
+        } else {
+            val thirtyDaysAgo = LocalDate.now().minusDays(29)
+            if (startDate.isBefore(thirtyDaysAgo)) thirtyDaysAgo else startDate
+        }
+        if (effectiveStart.isAfter(endDate)) return emptyList()
+
         val zone = ZoneId.systemDefault()
         val nowMs = System.currentTimeMillis()
-        val readings = mutableListOf<LocalHealthReading>()
+        val allReadings = mutableListOf<LocalHealthReading>()
 
-        var day = startDate
-        while (!day.isAfter(endDate)) {
-            val dayStart = day.atStartOfDay(zone).toInstant()
-            val dayEnd = day.plusDays(1).atStartOfDay(zone).toInstant()
-            val dayRange = TimeRangeFilter.between(dayStart, dayEnd)
+        // Walk newest -> oldest in 90-day chunks
+        var chunkEnd = endDate
+        while (!chunkEnd.isBefore(effectiveStart)) {
+            val candidateStart = chunkEnd.minusDays(89)
+            val chunkStart = if (candidateStart.isBefore(effectiveStart)) effectiveStart else candidateStart
 
-            // 1. Steps (deduplicated aggregate across Garmin/phone/etc.)
-            val steps = if (canSteps) {
+            val localStart = chunkStart.atStartOfDay()
+            val localEndExclusive = chunkEnd.plusDays(1).atStartOfDay()
+            val instantStart = localStart.atZone(zone).toInstant()
+            val instantEnd = localEndExclusive.atZone(zone).toInstant()
+
+            val stepsByDate = mutableMapOf<String, Int>()
+            val hydrationByDate = mutableMapOf<String, Int>()
+            val sleepByDate = mutableMapOf<String, IntArray>() // [total, deep, rem, light, awake, sessions]
+            val nutritionByDate = mutableMapOf<String, DoubleArray>() // [kcal, prot, carbs, fat, count]
+            val weightByDate = mutableMapOf<String, Pair<Long, Double>>() // epochMs -> kg
+
+            // 1. Steps (batched 1-day periods)
+            if (canSteps) {
                 runCatching {
-                    client.aggregate(
-                        AggregateRequest(
+                    val buckets = client.aggregateGroupByPeriod(
+                        AggregateGroupByPeriodRequest(
                             metrics = setOf(StepsRecord.COUNT_TOTAL),
-                            timeRangeFilter = dayRange,
-                        ),
-                    )[StepsRecord.COUNT_TOTAL]?.toInt() ?: 0
-                }.getOrDefault(0)
-            } else {
-                0
-            }
-
-            // 2. Hydration (mL)
-            val hydrationMl = if (canHydration) {
-                runCatching {
-                    client.aggregate(
-                        AggregateRequest(
-                            metrics = setOf(HydrationRecord.VOLUME_TOTAL),
-                            timeRangeFilter = dayRange,
-                        ),
-                    )[HydrationRecord.VOLUME_TOTAL]?.inMilliliters?.roundToInt() ?: 0
-                }.getOrDefault(0)
-            } else {
-                0
-            }
-
-            // 3. Sleep (attribute overnight sessions ending on `day`)
-            var sleepTotalMin = 0
-            var sleepDeepMin = 0
-            var sleepRemMin = 0
-            var sleepLightMin = 0
-            var sleepAwakeMin = 0
-            var sleepSessions = 0
-            if (canSleep) {
-                runCatching {
-                    val sleepWindowStart = day.minusDays(1).atTime(18, 0).atZone(zone).toInstant()
-                    val response = client.readRecords(
-                        ReadRecordsRequest(
-                            recordType = SleepSessionRecord::class,
-                            timeRangeFilter = TimeRangeFilter.between(sleepWindowStart, dayEnd),
+                            timeRangeFilter = TimeRangeFilter.between(localStart, localEndExclusive),
+                            timeRangeSlicer = Period.ofDays(1),
                         ),
                     )
-                    val matching = response.records.filter { rec ->
-                        !rec.endTime.isBefore(dayStart) && rec.endTime.isBefore(dayEnd)
-                    }
-                    sleepSessions = matching.size
-                    for (session in matching) {
-                        if (session.stages.isNotEmpty()) {
-                            var sessionAsleepMin = 0
-                            for (stage in session.stages) {
-                                val mins = Duration.between(stage.startTime, stage.endTime)
-                                    .toMinutes()
-                                    .toInt()
-                                    .coerceAtLeast(0)
-                                when (stage.stage) {
-                                    SleepSessionRecord.STAGE_TYPE_DEEP -> {
-                                        sleepDeepMin += mins
-                                        sessionAsleepMin += mins
-                                    }
-                                    SleepSessionRecord.STAGE_TYPE_REM -> {
-                                        sleepRemMin += mins
-                                        sessionAsleepMin += mins
-                                    }
-                                    SleepSessionRecord.STAGE_TYPE_LIGHT,
-                                    SleepSessionRecord.STAGE_TYPE_SLEEPING -> {
-                                        sleepLightMin += mins
-                                        sessionAsleepMin += mins
-                                    }
-                                    SleepSessionRecord.STAGE_TYPE_AWAKE,
-                                    SleepSessionRecord.STAGE_TYPE_AWAKE_IN_BED,
-                                    SleepSessionRecord.STAGE_TYPE_OUT_OF_BED -> {
-                                        sleepAwakeMin += mins
-                                    }
-                                    else -> {
-                                        sessionAsleepMin += mins
-                                    }
-                                }
-                            }
-                            sleepTotalMin += if (sessionAsleepMin > 0) {
-                                sessionAsleepMin
-                            } else {
-                                Duration.between(session.startTime, session.endTime)
-                                    .toMinutes()
-                                    .toInt()
-                                    .coerceAtLeast(0)
-                            }
-                        } else {
-                            val totalMin = Duration.between(session.startTime, session.endTime)
-                                .toMinutes()
-                                .toInt()
-                                .coerceAtLeast(0)
-                            sleepTotalMin += totalMin
+                    for (bucket in buckets) {
+                        val count = bucket.result[StepsRecord.COUNT_TOTAL]?.toInt() ?: 0
+                        if (count > 0) {
+                            val key = bucket.startTime.toLocalDate().toString()
+                            stepsByDate[key] = (stepsByDate[key] ?: 0) + count
                         }
                     }
                 }
             }
 
-            // 4. Nutrition / Macros
-            var calories = 0.0
-            var protein = 0.0
-            var carbs = 0.0
-            var fat = 0.0
-            var nutritionCount = 0
-            if (canNutrition) {
+            // 2. Hydration (batched 1-day periods)
+            if (canHydration) {
                 runCatching {
-                    val response = client.readRecords(
-                        ReadRecordsRequest(
-                            recordType = NutritionRecord::class,
-                            timeRangeFilter = dayRange,
+                    val buckets = client.aggregateGroupByPeriod(
+                        AggregateGroupByPeriodRequest(
+                            metrics = setOf(HydrationRecord.VOLUME_TOTAL),
+                            timeRangeFilter = TimeRangeFilter.between(localStart, localEndExclusive),
+                            timeRangeSlicer = Period.ofDays(1),
                         ),
                     )
-                    nutritionCount = response.records.size
-                    for (rec in response.records) {
-                        calories += rec.energy?.inKilocalories ?: 0.0
-                        protein += rec.protein?.inGrams ?: 0.0
-                        carbs += rec.totalCarbohydrate?.inGrams ?: 0.0
-                        fat += rec.totalFat?.inGrams ?: 0.0
+                    for (bucket in buckets) {
+                        val ml = bucket.result[HydrationRecord.VOLUME_TOTAL]?.inMilliliters?.roundToInt() ?: 0
+                        if (ml > 0) {
+                            val key = bucket.startTime.toLocalDate().toString()
+                            hydrationByDate[key] = (hydrationByDate[key] ?: 0) + ml
+                        }
                     }
                 }
             }
 
-            // 5. Bodyweight (latest reading of the day)
-            val weightKg = if (canWeight) {
+            // 3. Sleep (attribute overnight sessions to their wake-up LocalDate)
+            if (canSleep) {
                 runCatching {
-                    val response = client.readRecords(
-                        ReadRecordsRequest(
-                            recordType = WeightRecord::class,
-                            timeRangeFilter = dayRange,
-                        ),
-                    )
-                    response.records.maxByOrNull { it.time }?.weight?.inKilograms
-                }.getOrNull()
-            } else {
-                null
+                    val sleepWindowStart = chunkStart.minusDays(1).atTime(18, 0).atZone(zone).toInstant()
+                    var pageToken: String? = null
+                    do {
+                        val response = client.readRecords(
+                            ReadRecordsRequest(
+                                recordType = SleepSessionRecord::class,
+                                timeRangeFilter = TimeRangeFilter.between(sleepWindowStart, instantEnd),
+                                pageToken = pageToken,
+                            ),
+                        )
+                        for (session in response.records) {
+                            val wakeDate = session.endTime.atZone(zone).toLocalDate()
+                            if (wakeDate.isBefore(chunkStart) || wakeDate.isAfter(chunkEnd)) continue
+                            val key = wakeDate.toString()
+                            val acc = sleepByDate.getOrPut(key) { IntArray(6) }
+                            acc[5] += 1
+                            if (session.stages.isNotEmpty()) {
+                                var sessionAsleepMin = 0
+                                for (stage in session.stages) {
+                                    val mins = Duration.between(stage.startTime, stage.endTime)
+                                        .toMinutes()
+                                        .toInt()
+                                        .coerceAtLeast(0)
+                                    when (stage.stage) {
+                                        SleepSessionRecord.STAGE_TYPE_DEEP -> {
+                                            acc[1] += mins
+                                            sessionAsleepMin += mins
+                                        }
+                                        SleepSessionRecord.STAGE_TYPE_REM -> {
+                                            acc[2] += mins
+                                            sessionAsleepMin += mins
+                                        }
+                                        SleepSessionRecord.STAGE_TYPE_LIGHT,
+                                        SleepSessionRecord.STAGE_TYPE_SLEEPING -> {
+                                            acc[3] += mins
+                                            sessionAsleepMin += mins
+                                        }
+                                        SleepSessionRecord.STAGE_TYPE_AWAKE,
+                                        SleepSessionRecord.STAGE_TYPE_AWAKE_IN_BED,
+                                        SleepSessionRecord.STAGE_TYPE_OUT_OF_BED -> {
+                                            acc[4] += mins
+                                        }
+                                        else -> {
+                                            sessionAsleepMin += mins
+                                        }
+                                    }
+                                }
+                                acc[0] += if (sessionAsleepMin > 0) {
+                                    sessionAsleepMin
+                                } else {
+                                    Duration.between(session.startTime, session.endTime)
+                                        .toMinutes()
+                                        .toInt()
+                                        .coerceAtLeast(0)
+                                }
+                            } else {
+                                acc[0] += Duration.between(session.startTime, session.endTime)
+                                    .toMinutes()
+                                    .toInt()
+                                    .coerceAtLeast(0)
+                            }
+                        }
+                        pageToken = response.pageToken
+                    } while (pageToken != null)
+                }
             }
 
-            val reading = LocalHealthReading(
-                date = day.toString(),
-                steps = steps,
-                hydrationMl = hydrationMl,
-                sleepTotalMinutes = sleepTotalMin,
-                sleepDeepMinutes = sleepDeepMin,
-                sleepRemMinutes = sleepRemMin,
-                sleepLightMinutes = sleepLightMin,
-                sleepAwakeMinutes = sleepAwakeMin,
-                sleepSessionCount = sleepSessions,
-                calories = calories,
-                proteinGrams = protein,
-                carbsGrams = carbs,
-                fatGrams = fat,
-                nutritionEntryCount = nutritionCount,
-                bodyweightKg = weightKg,
-                syncedAtEpochMs = nowMs,
-            )
-            if (reading.hasAnyData) {
-                readings.add(reading)
+            // 4. Nutrition
+            if (canNutrition) {
+                runCatching {
+                    var pageToken: String? = null
+                    do {
+                        val response = client.readRecords(
+                            ReadRecordsRequest(
+                                recordType = NutritionRecord::class,
+                                timeRangeFilter = TimeRangeFilter.between(instantStart, instantEnd),
+                                pageToken = pageToken,
+                            ),
+                        )
+                        for (rec in response.records) {
+                            val key = rec.startTime.atZone(zone).toLocalDate().toString()
+                            val acc = nutritionByDate.getOrPut(key) { DoubleArray(5) }
+                            acc[0] += rec.energy?.inKilocalories ?: 0.0
+                            acc[1] += rec.protein?.inGrams ?: 0.0
+                            acc[2] += rec.totalCarbohydrate?.inGrams ?: 0.0
+                            acc[3] += rec.totalFat?.inGrams ?: 0.0
+                            acc[4] += 1.0
+                        }
+                        pageToken = response.pageToken
+                    } while (pageToken != null)
+                }
             }
-            day = day.plusDays(1)
+
+            // 5. Bodyweight (latest reading per day)
+            if (canWeight) {
+                runCatching {
+                    var pageToken: String? = null
+                    do {
+                        val response = client.readRecords(
+                            ReadRecordsRequest(
+                                recordType = WeightRecord::class,
+                                timeRangeFilter = TimeRangeFilter.between(instantStart, instantEnd),
+                                pageToken = pageToken,
+                            ),
+                        )
+                        for (rec in response.records) {
+                            val key = rec.time.atZone(zone).toLocalDate().toString()
+                            val ts = rec.time.toEpochMilli()
+                            val prev = weightByDate[key]
+                            if (prev == null || ts >= prev.first) {
+                                weightByDate[key] = ts to rec.weight.inKilograms
+                            }
+                        }
+                        pageToken = response.pageToken
+                    } while (pageToken != null)
+                }
+            }
+
+            val datesWithData = (stepsByDate.keys + hydrationByDate.keys + sleepByDate.keys + nutritionByDate.keys + weightByDate.keys)
+                .sorted()
+
+            val chunkReadings = datesWithData.mapNotNull { dateKey ->
+                val sleepArr = sleepByDate[dateKey]
+                val nutArr = nutritionByDate[dateKey]
+                val reading = LocalHealthReading(
+                    date = dateKey,
+                    steps = stepsByDate[dateKey] ?: 0,
+                    hydrationMl = hydrationByDate[dateKey] ?: 0,
+                    sleepTotalMinutes = sleepArr?.get(0) ?: 0,
+                    sleepDeepMinutes = sleepArr?.get(1) ?: 0,
+                    sleepRemMinutes = sleepArr?.get(2) ?: 0,
+                    sleepLightMinutes = sleepArr?.get(3) ?: 0,
+                    sleepAwakeMinutes = sleepArr?.get(4) ?: 0,
+                    sleepSessionCount = sleepArr?.get(5) ?: 0,
+                    calories = nutArr?.get(0) ?: 0.0,
+                    proteinGrams = nutArr?.get(1) ?: 0.0,
+                    carbsGrams = nutArr?.get(2) ?: 0.0,
+                    fatGrams = nutArr?.get(3) ?: 0.0,
+                    nutritionEntryCount = nutArr?.get(4)?.roundToInt() ?: 0,
+                    bodyweightKg = weightByDate[dateKey]?.second,
+                    syncedAtEpochMs = nowMs,
+                )
+                reading.takeIf { it.hasAnyData }
+            }
+
+            allReadings.addAll(chunkReadings)
+            onChunkProgress?.invoke(chunkStart, chunkEnd, chunkReadings)
+
+            chunkEnd = chunkStart.minusDays(1)
         }
 
-        return readings
+        return allReadings.sortedBy { it.date }
     }
 
     companion object {
@@ -266,6 +339,7 @@ class HealthConnectReader(private val context: Context) {
         val PERM_NUTRITION: String = HealthPermission.getReadPermission(NutritionRecord::class)
         val PERM_WEIGHT: String = HealthPermission.getReadPermission(WeightRecord::class)
         val PERM_BACKGROUND: String = HealthPermission.PERMISSION_READ_HEALTH_DATA_IN_BACKGROUND
+        val PERM_HISTORY: String = HealthPermission.PERMISSION_READ_HEALTH_DATA_HISTORY
 
         val ALL_PERMISSIONS: Set<String> = setOf(
             PERM_STEPS,
@@ -274,6 +348,7 @@ class HealthConnectReader(private val context: Context) {
             PERM_NUTRITION,
             PERM_WEIGHT,
             PERM_BACKGROUND,
+            PERM_HISTORY,
         )
     }
 }

@@ -85,17 +85,20 @@ private data class WorldMapTileSpec(
 )
 
 private object WorldMapTileGrid {
-    const val COLS = 2
+    const val COLS = 3
     const val ROWS = 3
     val TILE_SIZE_DP = 360.dp
 
     val tiles: List<WorldMapTileSpec> = listOf(
         WorldMapTileSpec(col = 0, row = 0, drawableRes = R.drawable.map_tile_0_0),
         WorldMapTileSpec(col = 1, row = 0, drawableRes = R.drawable.map_tile_0_1),
+        WorldMapTileSpec(col = 2, row = 0, drawableRes = R.drawable.map_tile_0_2),
         WorldMapTileSpec(col = 0, row = 1, drawableRes = R.drawable.map_tile_1_0),
         WorldMapTileSpec(col = 1, row = 1, drawableRes = R.drawable.map_tile_1_1),
+        WorldMapTileSpec(col = 2, row = 1, drawableRes = R.drawable.map_tile_1_2),
         WorldMapTileSpec(col = 0, row = 2, drawableRes = R.drawable.map_tile_2_0),
         WorldMapTileSpec(col = 1, row = 2, drawableRes = R.drawable.map_tile_2_1),
+        WorldMapTileSpec(col = 2, row = 2, drawableRes = R.drawable.map_tile_2_2),
     )
 }
 
@@ -123,6 +126,9 @@ internal fun shopkeeperDrawableFor(shopkeeperId: String): Int = when (shopkeeper
     "shopkeeper_mirefen" -> R.drawable.shopkeeper_mirefen
     "shopkeeper_stormspire" -> R.drawable.shopkeeper_stormspire
     "shopkeeper_obsidian" -> R.drawable.shopkeeper_obsidian
+    "shopkeeper_frostpeak" -> R.drawable.shopkeeper_frostpeak
+    "shopkeeper_sunspire" -> R.drawable.shopkeeper_sunspire
+    "shopkeeper_ashen" -> R.drawable.shopkeeper_ashen
     else -> R.drawable.shopkeeper_ember
 }
 

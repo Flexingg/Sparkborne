@@ -80,6 +80,7 @@ fun TelemetrySyncTabContent(
     onResetNewJourney: () -> Unit,
     onRequestHealthConnectPermissions: () -> Unit = {},
     onSyncHealthConnect: () -> Unit = {},
+    onRunBackfill: (Int) -> Unit = {},
 ) {
     val colors = RpgTheme.colors
     var activeSubTab by remember { mutableStateOf(SyncSubTab.DATA) }
@@ -251,6 +252,49 @@ fun TelemetrySyncTabContent(
                             onSyncToday = onSyncToday,
                             onSync14Days = onSync14Days,
                         )
+                    }
+
+                    item {
+                        CleanRpgCard {
+                            Text(
+                                "MULTI-YEAR / ALL-TIME BACKFILL",
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = colors.accentPrimary,
+                            )
+                            Text(
+                                "Pulls historical Health Connect + SparkyFitness data into your Averages & Muscle Strength baseline without dumping old steps into today's Step Bank.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = colors.textMuted,
+                            )
+                            val running = state.backfillProgress != null
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                OutlinedButton(onClick = { onRunBackfill(1) }, enabled = !running) {
+                                    Text("1 Year")
+                                }
+                                OutlinedButton(onClick = { onRunBackfill(3) }, enabled = !running) {
+                                    Text("3 Years")
+                                }
+                                Button(onClick = { onRunBackfill(5) }, enabled = !running) {
+                                    Text("All-Time (5y)")
+                                }
+                            }
+                            state.backfillProgress?.let { progress ->
+                                LinearProgressIndicator(
+                                    progress = { progress.coerceIn(0f, 1f) },
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                            }
+                            state.backfillStatus?.let { msg ->
+                                Text(
+                                    msg,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 11.sp,
+                                    color = colors.accentSecondary,
+                                )
+                            }
+                        }
                     }
                 }
 
@@ -710,6 +754,7 @@ private fun HealthConnectSourceCard(
             "Nutrition" to (HealthConnectReader.PERM_NUTRITION in hc.grantedPermissions),
             "Weight" to (HealthConnectReader.PERM_WEIGHT in hc.grantedPermissions),
             "Background" to hc.hasBackgroundPermission,
+            "History" to hc.hasHistoryPermission,
         )
 
         FlowRow(

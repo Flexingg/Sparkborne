@@ -32,6 +32,39 @@ data class TelemetryApplyResult(
  */
 object TelemetryRulesEngine {
 
+    /**
+     * Applies a historical backfill day (strictly prior to today):
+     * - Seeds permanent Muscle Strength XP from historical lifting volume (idempotent via contentHash).
+     * - Records `processedDateHashes` and `dailyCreditedSteps` high-water mark.
+     * - Does NOT dump years of historical steps into the Step Bank or auto-hatch/complete quests.
+     */
+    fun applyHistoricalBackfill(
+        state: GameState,
+        snapshot: DailyTelemetrySnapshot,
+        delta: TelemetryDelta,
+    ): TelemetryApplyResult {
+        if (state.processedDateHashes[snapshot.date] == snapshot.contentHash) {
+            return TelemetryApplyResult(state = state, applied = false, events = emptyList())
+        }
+
+        val updatedMuscleXp = state.player.muscleStrengthXp.toMutableMap()
+        if (delta.effectiveMuscleVolumeKgDeltas.isNotEmpty()) {
+            for ((group, volDelta) in delta.effectiveMuscleVolumeKgDeltas) {
+                if (volDelta > 0.0) {
+                    updatedMuscleXp[group] = (updatedMuscleXp[group] ?: 0.0) + volDelta
+                }
+            }
+        }
+
+        val prevCredited = state.dailyCreditedSteps[snapshot.date] ?: 0
+        val nextState = state.copy(
+            player = state.player.copy(muscleStrengthXp = updatedMuscleXp),
+            processedDateHashes = state.processedDateHashes + (snapshot.date to snapshot.contentHash),
+            dailyCreditedSteps = state.dailyCreditedSteps + (snapshot.date to maxOf(prevCredited, snapshot.steps)),
+        )
+        return TelemetryApplyResult(state = nextState, applied = true, events = emptyList())
+    }
+
     fun applyTelemetry(
         state: GameState,
         snapshot: DailyTelemetrySnapshot,

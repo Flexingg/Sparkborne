@@ -27,9 +27,11 @@ object SparkpediaEngine {
             }
         }
 
-        // Always unlocked starter guide
+        // Always unlocked starter guides
         unlock("guide_welcome")
         unlock("guide_step_bank")
+        unlock("guide_health_connect")
+        unlock("guide_eastern_frontier")
         unlock("loc_emberhearth")
         unlock("keeper_ember")
 
@@ -52,10 +54,17 @@ object SparkpediaEngine {
             "loc_mirefen_village" to "keeper_mirefen",
             "loc_stormspire_citadel" to "keeper_stormspire",
             "loc_obsidian_crag" to "keeper_obsidian",
+            "loc_frostpeak_bastion" to "keeper_frostpeak",
+            "loc_sunspire_oasis" to "keeper_sunspire",
+            "loc_ashen_sanctum" to "keeper_ashen",
         )
+        val frontierIds = setOf("loc_frostpeak_bastion", "loc_sunspire_oasis", "loc_ashen_sanctum")
         for (locId in state.discoveredLocationIds) {
             unlock(locId)
             townToKeeper[locId]?.let(::unlock)
+            if (locId in frontierIds) {
+                unlock("act_guide_frontier_skills")
+            }
         }
 
         // Activities & Expeditions

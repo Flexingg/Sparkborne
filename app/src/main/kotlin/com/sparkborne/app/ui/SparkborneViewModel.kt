@@ -59,6 +59,8 @@ data class SparkborneUiState(
     val installedVersionLabel: String = "${BuildConfig.VERSION_NAME} (#${BuildConfig.VERSION_CODE})",
     val healthConnectStatus: com.sparkborne.app.data.HealthConnectStatus = com.sparkborne.app.data.HealthConnectStatus(),
     val healthConnectMessage: String? = null,
+    val backfillProgress: Float? = null,
+    val backfillStatus: String? = null,
 ) {
     val selectedSnapshot: DailyTelemetrySnapshot?
         get() = snapshots.firstOrNull { it.date == selectedDate } ?: snapshots.firstOrNull()
@@ -397,6 +399,107 @@ class SparkborneViewModel(application: Application) : AndroidViewModel(applicati
                         )
                     }
                 }
+        }
+    }
+
+    /**
+     * Multi-year / All-Time backfill across BOTH local Health Connect (90-day batched chunks)
+     * and SparkyFitness (30-day chunks, stopping early after 4 consecutive empty months).
+     * Historical days populate Room averages & baseline Muscle Strength XP without dumping
+     * years of old steps into the Step Bank or auto-completing active quests.
+     */
+    fun runHistoricalBackfill(years: Int) {
+        if (_uiState.value.backfillProgress != null) return
+        val config = currentConfig()
+        val endDate = LocalDate.now()
+        val startDate = endDate.minusYears(years.toLong())
+        val totalDays = java.time.temporal.ChronoUnit.DAYS.between(startDate, endDate).coerceAtLeast(1).toFloat()
+
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    backfillProgress = 0.02f,
+                    backfillStatus = "Starting ${years}y backfill ($startDate → $endDate)...",
+                    errorMessage = null,
+                )
+            }
+
+            var hcDaysImported = 0
+            // 1. Fast chunked Health Connect backfill (first 40% of progress bar)
+            runCatching {
+                val hcStatus = healthConnectReader.getStatus()
+                _uiState.update { it.copy(healthConnectStatus = hcStatus) }
+                if (hcStatus.hasAnyReadPermission) {
+                    healthConnectReader.readRangeChunked(startDate, endDate) { chunkStart, chunkEnd, chunkReadings ->
+                        if (chunkReadings.isNotEmpty()) {
+                            val res = telemetryRepository.syncLocalHealthConnect(chunkReadings)
+                            hcDaysImported += res.updatedDays
+                            val trend = BodyweightTrendCalculator.calculate(_uiState.value.snapshots, endDate)
+                            gameRepository.applyHistoricalBackfill(res.snapshots, res.deltas, trend)
+                        }
+                        val doneDays = java.time.temporal.ChronoUnit.DAYS.between(chunkStart, endDate).toFloat()
+                        val pct = (doneDays / totalDays).coerceIn(0f, 1f) * 0.40f
+                        _uiState.update {
+                            it.copy(
+                                backfillProgress = pct.coerceAtLeast(0.05f),
+                                backfillStatus = "Health Connect: $chunkStart → $chunkEnd ($hcDaysImported days updated)",
+                            )
+                        }
+                    }
+                }
+            }
+
+            // 2. Chunked SparkyFitness backfill (remaining 60%, 30-day chunks newest -> oldest)
+            var sparkyDaysImported = 0
+            if (config.validate().isSuccess) {
+                var chunkEnd = endDate
+                var emptyConsecutiveChunks = 0
+                while (!chunkEnd.isBefore(startDate) && emptyConsecutiveChunks < 4) {
+                    val candidateStart = chunkEnd.minusDays(29)
+                    val chunkStart = if (candidateStart.isBefore(startDate)) startDate else candidateStart
+
+                    val doneDays = java.time.temporal.ChronoUnit.DAYS.between(chunkStart, endDate).toFloat()
+                    val pct = 0.40f + (doneDays / totalDays).coerceIn(0f, 1f) * 0.60f
+                    _uiState.update {
+                        it.copy(
+                            backfillProgress = pct.coerceAtMost(0.98f),
+                            backfillStatus = "SparkyFitness: $chunkStart → $chunkEnd ($sparkyDaysImported days updated)",
+                        )
+                    }
+
+                    val res = telemetryRepository.syncRange(
+                        config = config,
+                        startDate = chunkStart,
+                        endDate = chunkEnd,
+                        triggerUpstreamProviders = false,
+                    )
+                    res.onSuccess { syncRes ->
+                        val hasData = syncRes.snapshots.any { s ->
+                            s.steps > 0 || s.sleep.totalMinutes > 0 || s.hydration.totalMl > 0 ||
+                                s.nutrition.calories > 0.0 || s.lifting.totalVolumeKg > 0.0 || s.bodyweightKg != null
+                        }
+                        if (hasData) {
+                            emptyConsecutiveChunks = 0
+                            sparkyDaysImported += syncRes.updatedDays
+                            val trend = BodyweightTrendCalculator.calculate(_uiState.value.snapshots, endDate)
+                            gameRepository.applyHistoricalBackfill(syncRes.snapshots, syncRes.deltas, trend)
+                        } else {
+                            emptyConsecutiveChunks += 1
+                        }
+                    }.onFailure {
+                        emptyConsecutiveChunks += 1
+                    }
+
+                    chunkEnd = chunkStart.minusDays(1)
+                }
+            }
+
+            _uiState.update {
+                it.copy(
+                    backfillProgress = null,
+                    backfillStatus = "Backfill complete (${years}y): HC +$hcDaysImported d · Sparky +$sparkyDaysImported d",
+                )
+            }
         }
     }
 

@@ -150,6 +150,7 @@ fun SparkborneRootScreen(
                     onResetNewJourney = viewModel::resetNewJourney,
                     onRequestHealthConnectPermissions = onRequestHealthConnectPermissions,
                     onSyncHealthConnect = { viewModel.syncHealthConnect(days = 1, silent = false) },
+                    onRunBackfill = viewModel::runHistoricalBackfill,
                 )
             }
         }

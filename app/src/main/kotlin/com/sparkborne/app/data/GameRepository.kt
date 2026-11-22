@@ -77,6 +77,28 @@ class GameRepository(
         return state to allEvents
     }
 
+    suspend fun applyHistoricalBackfill(
+        snapshots: List<DailyTelemetrySnapshot>,
+        deltas: List<TelemetryDelta>,
+        trend: BodyweightTrend?,
+    ): GameState {
+        val todayStr = LocalDate.now().toString()
+        var state = ExpeditionManager.checkContractDeadline(loadGameState(), LocalDate.now())
+        val deltaByDate = deltas.associateBy { it.date }
+
+        for (snap in snapshots.sortedBy { it.date }) {
+            val delta = deltaByDate[snap.date] ?: continue
+            state = if (snap.date >= todayStr) {
+                TelemetryRulesEngine.applyTelemetry(state, snap, delta, trend).state
+            } else {
+                TelemetryRulesEngine.applyHistoricalBackfill(state, snap, delta).state
+            }
+        }
+
+        saveGameState(state)
+        return state
+    }
+
     private fun decode(raw: String): GameState {
         return runCatching { json.decodeFromString<GameState>(raw) }
             .getOrElse { GameCatalog.initialGameState() }
