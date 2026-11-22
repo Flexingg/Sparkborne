@@ -1,9 +1,12 @@
 package com.sparkborne.app.ui
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -27,28 +30,42 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sparkborne.app.R
 import com.sparkborne.app.ui.components.PixelSprite
+import com.sparkborne.app.ui.components.RpgCurrencyRow
+import com.sparkborne.app.ui.components.RpgPanel
 import com.sparkborne.app.ui.components.UpdateAvailableBanner
 import com.sparkborne.app.ui.theme.RpgTheme
 import com.sparkborne.game.catalog.WorldCatalog
 
+private fun formatCompactSteps(steps: Int): String = when {
+    steps >= 1_000_000 -> "%.1fM".format(steps / 1_000_000.0)
+    steps >= 10_000 -> "%.1fk".format(steps / 1_000.0)
+    else -> "%,d".format(steps)
+}
+
 /**
  * Game-first root shell:
- * - Full-bleed viewport (especially for the interactive stitched pixel World Map!)
- * - Floating compact top RPG HUD pill (Hero portrait, Level, Gold/Shards/Iron, live WalkScape activity/travel bar, 1-tap Sync)
- * - Floating WalkScape-style bottom icon dock (no heavy Material3 app bars!).
+ * - Compact, non-blocking Top Game Bar showing Hero LV, Pixel Currencies, Step Bank,
+ *   and quick utility buttons (🔔 Dismissible Notifications/Quests, 📖 Sparkpedia, ⚡ Sync).
+ * - Zero permanently stuck banners: Intro Quest, App Updates, and Sync notices live cleanly inside
+ *   the toggleable 🔔 Notifications Drawer so you can dismiss or re-open them anytime.
  */
 @Composable
 fun SparkborneRootScreen(viewModel: SparkborneViewModel) {
     val state by viewModel.uiState.collectAsState()
     val colors = RpgTheme.colors
     val game = state.gameState
+
+    val alertCount = buildList {
+        if (!game.introQuest.isComplete) add("intro")
+        if (state.availableUpdate != null) add("update")
+        if (state.errorMessage != null) add("error")
+    }.size
 
     Box(
         modifier = Modifier
@@ -69,7 +86,7 @@ fun SparkborneRootScreen(viewModel: SparkborneViewModel) {
                         Modifier
                             .statusBarsPadding()
                             .navigationBarsPadding()
-                            .padding(top = 86.dp, bottom = 78.dp)
+                            .padding(top = 98.dp, bottom = 76.dp)
                     },
                 ),
             label = "game_view_switch",
@@ -85,6 +102,8 @@ fun SparkborneRootScreen(viewModel: SparkborneViewModel) {
                     onBuyShopItem = viewModel::buyShopListing,
                     onStartContractFromTown = viewModel::startContractFromTown,
                     onVisitedShop = viewModel::onVisitedTownShop,
+                    onSpendBankedStepsOnTravel = viewModel::spendBankedStepsOnTravel,
+                    onSpendBankedStepsOnActivity = viewModel::spendBankedStepsOnActivity,
                 )
 
                 SparkborneTab.DELVE -> DelveTabScreen(
@@ -95,6 +114,7 @@ fun SparkborneRootScreen(viewModel: SparkborneViewModel) {
                     onCombatAction = viewModel::performCombatAction,
                     onAbandon = viewModel::abandonExpedition,
                     onClearFinished = viewModel::clearFinishedExpedition,
+                    onSpendBankedStepsOnDelve = viewModel::spendBankedStepsOnDelve,
                 )
 
                 SparkborneTab.HERO -> HeroTabScreen(
@@ -129,23 +149,27 @@ fun SparkborneRootScreen(viewModel: SparkborneViewModel) {
             }
         }
 
-        // 2. Floating Top Game HUD Strip (compact, translucent, zero app-bar bulk!)
+        // 2. Clean Top Game Bar + Dismissible / Re-Openable Notifications Drawer
         Column(
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .fillMaxWidth()
                 .statusBarsPadding()
-                .padding(horizontal = 12.dp, vertical = 8.dp),
+                .padding(horizontal = 10.dp, vertical = 6.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Surface(
                 shape = RoundedCornerShape(10.dp),
-                color = colors.panelSurface.copy(alpha = 0.92f),
+                color = colors.panelSurface.copy(alpha = 0.94f),
                 border = BorderStroke(1.5.dp, colors.pixelBorderBright),
                 shadowElevation = 8.dp,
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
+                Column(
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
+                    verticalArrangement = Arrangement.spacedBy(5.dp),
+                ) {
+                    // Row 1: Hero Avatar + Level + Currencies + Utility Buttons (🔔, 📖, ⚡)
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
@@ -153,24 +177,24 @@ fun SparkborneRootScreen(viewModel: SparkborneViewModel) {
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(7.dp),
                             modifier = Modifier.clickable { viewModel.selectTab(SparkborneTab.HERO) },
                         ) {
                             PixelSprite(
                                 drawableRes = R.drawable.pixel_hero_knight,
                                 contentDescription = "Hero",
-                                size = 36.dp,
+                                size = 34.dp,
                                 borderColor = colors.accentPrimary,
                             )
-                            Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                 Text(
                                     text = "LV.${game.player.level} · ${WorldCatalog.locationById(game.currentLocationId).name.substringBefore(" ")}",
                                     fontFamily = FontFamily.Monospace,
-                                    fontSize = 12.sp,
+                                    fontSize = 11.sp,
                                     fontWeight = FontWeight.ExtraBold,
                                     color = colors.accentPrimary,
                                 )
-                                com.sparkborne.app.ui.components.RpgCurrencyRow(
+                                RpgCurrencyRow(
                                     gold = game.player.gold,
                                     iron = game.player.ironOre,
                                     shards = game.player.emberShards,
@@ -180,8 +204,28 @@ fun SparkborneRootScreen(viewModel: SparkborneViewModel) {
                             }
                         }
 
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                            // 📖 Sparkpedia Codex Button with unread badge!
+                        Row(horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.CenterVertically) {
+                            // 🔔 Dismissible & Re-Openable Notifications / Quest Drawer Toggle
+                            Surface(
+                                shape = RoundedCornerShape(7.dp),
+                                color = if (state.showNotificationsPanel) colors.accentPrimary.copy(alpha = 0.22f) else colors.panelElevated,
+                                border = BorderStroke(
+                                    1.dp,
+                                    if (alertCount > 0 || state.showNotificationsPanel) colors.accentPrimary else colors.pixelBorderBright,
+                                ),
+                                modifier = Modifier.clickable { viewModel.toggleNotificationsPanel() },
+                            ) {
+                                Text(
+                                    text = if (alertCount > 0) "🔔$alertCount" else "🔔",
+                                    fontSize = 11.sp,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (alertCount > 0) colors.accentPrimary else colors.textPrimary,
+                                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 5.dp),
+                                )
+                            }
+
+                            // 📖 Sparkpedia Codex
                             val hasUnread = game.unreadCodexIds.isNotEmpty()
                             Surface(
                                 shape = RoundedCornerShape(7.dp),
@@ -194,12 +238,12 @@ fun SparkborneRootScreen(viewModel: SparkborneViewModel) {
                             ) {
                                 Text(
                                     text = if (hasUnread) "📖•" else "📖",
-                                    fontSize = 13.sp,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
+                                    fontSize = 12.sp,
+                                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 5.dp),
                                 )
                             }
 
-                            // Quick 1-Tap SparkyFitness Step Sync pill right on the HUD!
+                            // ⚡ 1-Tap SparkyFitness + Garmin + Liftosaur Sync
                             Surface(
                                 shape = RoundedCornerShape(7.dp),
                                 color = colors.panelElevated,
@@ -207,83 +251,70 @@ fun SparkborneRootScreen(viewModel: SparkborneViewModel) {
                                 modifier = Modifier.clickable(enabled = !state.isSyncing) { viewModel.syncDays(1) },
                             ) {
                                 Text(
-                                    text = if (state.isSyncing) "SYNC..." else "⚡ SYNC",
+                                    text = if (state.isSyncing) "..." else "⚡",
                                     fontFamily = FontFamily.Monospace,
-                                    fontSize = 11.sp,
+                                    fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = colors.accentSecondary,
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
                                 )
                             }
                         }
                     }
 
-                    // Live WalkScape Activity / Travel Ticker inside the Top HUD
+                    // Row 2: Compact Step Bank + Live Task Strip
+                    val stepCap = game.player.maxStepBankCapacity()
                     val activeTravel = game.activeTravel
                     val activeActivity = game.activeActivity
-                    if (activeTravel != null) {
-                        val dest = WorldCatalog.locationById(activeTravel.toLocationId)
-                        val pct = (activeTravel.progressFraction * 100).toInt()
-                        val remaining = (activeTravel.stepsRequired - activeTravel.stepsWalked).coerceAtLeast(0)
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 6.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                        ) {
-                            Text(
-                                text = "🥾 Walking → ${dest.name} ($pct%)",
-                                fontSize = 10.sp,
-                                fontFamily = FontFamily.Monospace,
-                                fontWeight = FontWeight.Bold,
-                                color = colors.accentPrimary,
-                            )
-                            Text(
-                                text = "$remaining left",
-                                fontSize = 10.sp,
-                                fontFamily = FontFamily.Monospace,
-                                color = colors.textPrimary,
-                            )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = "🥾 BANK: ${formatCompactSteps(game.player.savedSteps)} / ${formatCompactSteps(stepCap)}",
+                            fontSize = 10.sp,
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.Bold,
+                            color = colors.vitalityEmerald,
+                        )
+                        val taskLabel = when {
+                            activeTravel != null -> {
+                                val dest = WorldCatalog.locationById(activeTravel.toLocationId).name.substringBefore(" ")
+                                "→ $dest (${(activeTravel.progressFraction * 100).toInt()}%)"
+                            }
+                            activeActivity != null -> {
+                                val def = WorldCatalog.activityById(activeActivity.activityId)
+                                if (def != null) "${skillEmojiFor(def.skillTag)} ${def.skillTag} x${activeActivity.completionsCount}" else ""
+                            }
+                            game.activeExpedition != null -> "⚔ Delving"
+                            else -> "Idle · Banking Steps"
                         }
+                        Text(
+                            text = taskLabel,
+                            fontSize = 10.sp,
+                            fontFamily = FontFamily.Monospace,
+                            color = colors.accentSecondary,
+                        )
+                    }
+
+                    // Slim progress bar for active travel or activity
+                    if (activeTravel != null) {
                         LinearProgressIndicator(
                             progress = { activeTravel.progressFraction },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 3.dp),
+                            modifier = Modifier.fillMaxWidth(),
                             color = colors.accentPrimary,
                             trackColor = colors.obsidianBg,
                         )
                     } else if (activeActivity != null) {
                         val def = WorldCatalog.activityById(activeActivity.activityId)
                         if (def != null) {
-                            val frac = (activeActivity.stepsProgress.toFloat() / def.stepsPerAction.coerceAtLeast(1)).coerceIn(0f, 1f)
-                            val pct = (frac * 100).toInt()
-                            val remaining = (def.stepsPerAction - activeActivity.stepsProgress).coerceAtLeast(0)
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(top = 6.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                            ) {
-                                Text(
-                                    text = "${skillEmojiFor(def.skillTag)} ${def.name} · x${activeActivity.completionsCount} ($pct%)",
-                                    fontSize = 10.sp,
-                                    fontFamily = FontFamily.Monospace,
-                                    fontWeight = FontWeight.Bold,
-                                    color = colors.accentSecondary,
-                                )
-                                Text(
-                                    text = "$remaining to drop",
-                                    fontSize = 10.sp,
-                                    fontFamily = FontFamily.Monospace,
-                                    color = colors.vitalityEmerald,
-                                )
-                            }
                             LinearProgressIndicator(
-                                progress = { frac },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(top = 3.dp),
+                                progress = {
+                                    (activeActivity.stepsProgress.toFloat() / def.stepsPerAction.coerceAtLeast(1)).coerceIn(0f, 1f)
+                                },
+                                modifier = Modifier.fillMaxWidth(),
                                 color = colors.accentSecondary,
                                 trackColor = colors.obsidianBg,
                             )
@@ -292,20 +323,97 @@ fun SparkborneRootScreen(viewModel: SparkborneViewModel) {
                 }
             }
 
-            if (!game.introQuest.isComplete) {
-                IntroQuestBanner(
-                    step = game.introQuest.currentStep,
-                    onActionClick = viewModel::handleIntroQuestAction,
-                    onOpenGuide = viewModel::openSparkpedia,
-                )
-            }
+            // Dismissible & Re-Openable Notifications / Quests Drawer!
+            AnimatedVisibility(
+                visible = state.showNotificationsPanel,
+                enter = fadeIn(tween(160)) + expandVertically(),
+                exit = fadeOut(tween(140)) + shrinkVertically(),
+            ) {
+                RpgPanel(
+                    borderColor = colors.accentPrimary,
+                    containerColor = colors.panelSurface.copy(alpha = 0.97f),
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = "🔔 NOTIFICATIONS & QUESTS",
+                            fontSize = 11.sp,
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = colors.accentPrimary,
+                        )
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = colors.obsidianBg,
+                            border = BorderStroke(1.dp, colors.pixelBorderBright),
+                            modifier = Modifier.clickable { viewModel.dismissNotificationsPanel() },
+                        ) {
+                            Text(
+                                text = "✕ DISMISS",
+                                fontSize = 10.sp,
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Bold,
+                                color = colors.textMuted,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            )
+                        }
+                    }
 
-            state.availableUpdate?.let { update ->
-                UpdateAvailableBanner(
-                    update = update,
-                    downloadProgress = state.updateDownloadProgress,
-                    onDownloadAndInstall = viewModel::downloadAndInstallUpdate,
-                )
+                    if (!game.introQuest.isComplete) {
+                        IntroQuestBanner(
+                            step = game.introQuest.currentStep,
+                            onActionClick = {
+                                viewModel.dismissNotificationsPanel()
+                                viewModel.handleIntroQuestAction()
+                            },
+                            onOpenGuide = {
+                                viewModel.dismissNotificationsPanel()
+                                viewModel.openSparkpedia()
+                            },
+                        )
+                    }
+
+                    state.availableUpdate?.let { update ->
+                        UpdateAvailableBanner(
+                            update = update,
+                            downloadProgress = state.updateDownloadProgress,
+                            onDownloadAndInstall = viewModel::downloadAndInstallUpdate,
+                        )
+                    }
+
+                    state.statusMessage?.let { msg ->
+                        Text(
+                            text = "⚡ $msg",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.vitalityEmerald,
+                        )
+                    }
+
+                    state.errorMessage?.let { err ->
+                        Text(
+                            text = "⚠ $err",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.crimsonHp,
+                        )
+                    }
+
+                    if (game.recentLog.isNotEmpty()) {
+                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(
+                                text = "RECENT LOG",
+                                fontSize = 9.sp,
+                                fontFamily = FontFamily.Monospace,
+                                color = colors.textMuted,
+                            )
+                            game.recentLog.take(4).forEach { line ->
+                                Text("▸ $line", style = MaterialTheme.typography.bodySmall, color = colors.textPrimary)
+                            }
+                        }
+                    }
+                }
             }
         }
 

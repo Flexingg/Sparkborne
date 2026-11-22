@@ -70,6 +70,7 @@ fun DelveTabScreen(
     onCombatAction: (CombatAction) -> Unit,
     onAbandon: () -> Unit,
     onClearFinished: () -> Unit,
+    onSpendBankedStepsOnDelve: () -> Unit = {},
 ) {
     val active = state.activeExpedition
     val colors = RpgTheme.colors
@@ -289,8 +290,18 @@ fun DelveTabScreen(
                                     progress = node.stepsApplied.toFloat() / node.stepsRequired.coerceAtLeast(1),
                                     fillColor = colors.accentSecondary,
                                 )
+                                if (!node.isUnlocked && state.player.savedSteps > 0) {
+                                    val needed = (node.stepsRequired - node.stepsApplied).coerceAtLeast(0)
+                                    val toSpend = minOf(state.player.savedSteps, needed)
+                                    RpgActionButton(
+                                        text = "🥾 USE %,d BANKED STEPS".format(toSpend),
+                                        onClick = onSpendBankedStepsOnDelve,
+                                        containerColor = colors.vitalityEmerald,
+                                        modifier = Modifier.fillMaxWidth(),
+                                    )
+                                }
                                 RpgActionButton(
-                                    text = if (node.isUnlocked) "ENTER ${node.type.displayName.uppercase()}" else "SYNC STEPS TO UNLOCK",
+                                    text = if (node.isUnlocked) "ENTER ${node.type.displayName.uppercase()}" else "SYNC OR SPEND STEPS TO UNLOCK",
                                     onClick = onEnterNode,
                                     enabled = node.isUnlocked,
                                     modifier = Modifier.fillMaxWidth(),

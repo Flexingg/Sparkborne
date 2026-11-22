@@ -153,6 +153,7 @@ data class PlayerState(
     val gold: Int = 50,
     val emberShards: Int = 5,
     val ironOre: Int = 10,
+    val savedSteps: Int = 0,
     val muscleStrengthXp: Map<MuscleGroup, Double> = emptyMap(),
     val equippedWeaponId: String,
     val equippedArmor: Map<ArmorSlot, String> = emptyMap(),
@@ -170,6 +171,22 @@ data class PlayerState(
         val volumeXp = muscleStrengthXp[group] ?: 0.0
         if (volumeXp <= 0.0) return 1
         return floor(sqrt(volumeXp / 250.0)).toInt() + 1
+    }
+
+    /**
+     * WalkScape-style Step Bank capacity:
+     * Starts at 50,000 steps at Level 0 and scales cleanly into the millions with Hero Level
+     * and accumulated Muscle Strength Ranks.
+     */
+    fun maxStepBankCapacity(): Int {
+        val base = 50_000L
+        val lvl = level.coerceAtLeast(0).toLong()
+        val levelBonus = (lvl * 25_000L) + (lvl * lvl * 5_000L)
+        val extraMuscleRanks = MuscleGroup.entries
+            .filter { it != MuscleGroup.OTHER }
+            .sumOf { (muscleStrengthRank(it) - 1).coerceAtLeast(0).toLong() }
+        val muscleBonus = extraMuscleRanks * 10_000L
+        return (base + levelBonus + muscleBonus).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
     }
 
     fun xpToNextLevel(): Int = if (level <= 0) 100 else level * 150

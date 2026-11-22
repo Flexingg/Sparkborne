@@ -30,6 +30,15 @@ object SparkpediaCatalog {
             unlockHint = "Sync SparkyFitness telemetry.",
         ),
         CodexEntry(
+            id = "guide_step_bank",
+            category = CodexCategory.GUIDES,
+            title = "The Step Bank",
+            subtitle = "Bank Steps All Day · Spend on Demand",
+            summary = "Any idle or overflow steps synced from SparkyFitness are safely stored in your Step Bank so you can play in bursts whenever you want.",
+            mechanicsDetail = "• Starting Capacity: 50,000 steps.\n• Scales into the millions as you increase Hero Level (+25k/lvl + 5k×lvl²) and Muscle Strength Ranks (+10k per rank).\n• Spend banked steps anytime on World Travel, repeatable Town Activities, or unlocking Delve nodes!",
+            unlockHint = "Unlocked from the start.",
+        ),
+        CodexEntry(
             id = "guide_muscle_scaling",
             category = CodexCategory.GUIDES,
             title = "Muscle Strength & Weapons",

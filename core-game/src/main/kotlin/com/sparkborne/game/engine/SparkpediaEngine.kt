@@ -29,6 +29,7 @@ object SparkpediaEngine {
 
         // Always unlocked starter guide
         unlock("guide_welcome")
+        unlock("guide_step_bank")
         unlock("loc_emberhearth")
         unlock("keeper_ember")
 

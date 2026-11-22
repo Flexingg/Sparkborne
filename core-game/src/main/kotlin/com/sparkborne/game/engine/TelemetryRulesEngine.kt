@@ -167,11 +167,35 @@ object TelemetryRulesEngine {
             processedDateHashes = updatedHashes,
         )
 
-        // 6. When not in an active delve, synced steps drive WalkScape World Travel or Town Activities
+        // 6. Apply synced steps: overflow from active delve or idle steps bank cleanly into Step Bank!
         val isDelveActive = updatedExpedition?.status == ExpeditionStatus.ACTIVE
-        if (!isDelveActive && delta.stepsDelta > 0) {
+        if (delta.stepsDelta > 0) {
             val effectiveSteps = (delta.stepsDelta * stance.stepEfficiencyMultiplier).roundToInt()
-            nextState = WorldManager.applyStepsToWorld(nextState, effectiveSteps, events)
+            if (isDelveActive) {
+                val prevNode = state.activeExpedition?.currentNode
+                val nextNode = updatedExpedition?.currentNode
+                val consumedByNode = if (prevNode != null && nextNode != null && prevNode.index == nextNode.index) {
+                    (nextNode.stepsApplied - prevNode.stepsApplied).coerceAtLeast(0)
+                } else {
+                    0
+                }
+                val overflow = (effectiveSteps - consumedByNode).coerceAtLeast(0)
+                if (overflow > 0) {
+                    val (bankedState, accepted) = StepBankManager.depositSteps(nextState, overflow)
+                    nextState = bankedState
+                    if (accepted > 0) {
+                        events.add("Banked +$accepted extra steps (${nextState.player.savedSteps}/${nextState.player.maxStepBankCapacity()}).")
+                    }
+                }
+            } else if (nextState.activeTravel != null || nextState.activeActivity != null) {
+                nextState = WorldManager.applyStepsToWorld(nextState, effectiveSteps, events)
+            } else {
+                val (bankedState, accepted) = StepBankManager.depositSteps(nextState, effectiveSteps)
+                nextState = bankedState
+                if (accepted > 0) {
+                    events.add("Banked +$accepted steps (${nextState.player.savedSteps}/${nextState.player.maxStepBankCapacity()}).")
+                }
+            }
         }
 
         val mergedLog = (events + state.recentLog).take(30)

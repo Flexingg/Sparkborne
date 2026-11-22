@@ -335,6 +335,16 @@ fun HeroTabScreen(
                             fontFamily = FontFamily.Monospace,
                             color = colors.textMuted,
                         )
+
+                        // WalkScape Step Bank Capacity Bar (scales to millions with Level + Muscle Ranks!)
+                        val bankCap = player.maxStepBankCapacity()
+                        RpgProgressBar(
+                            label = "🥾 Step Bank (Scales w/ Lv + Muscle Ranks)",
+                            valueText = "%,d / %,d".format(player.savedSteps, bankCap),
+                            progress = player.savedSteps.toFloat() / bankCap.coerceAtLeast(1),
+                            fillColor = colors.vitalityEmerald,
+                            barHeight = 8.dp,
+                        )
                     }
                 }
 

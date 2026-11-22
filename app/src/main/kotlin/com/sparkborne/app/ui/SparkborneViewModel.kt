@@ -43,6 +43,7 @@ data class SparkborneUiState(
     val selectedSplash: SplashStyleId = SplashStyleId.TWILIGHT_CITADEL,
     val showSplash: Boolean = true,
     val showSparkpedia: Boolean = false,
+    val showNotificationsPanel: Boolean = false,
     val baseUrl: String = "",
     val apiKey: String = "",
     val isSyncing: Boolean = false,
@@ -401,6 +402,28 @@ class SparkborneViewModel(application: Application) : AndroidViewModel(applicati
                 )
             }
         }
+    }
+
+    // --- Notifications Drawer & Step Bank ---
+
+    fun toggleNotificationsPanel() {
+        _uiState.update { it.copy(showNotificationsPanel = !it.showNotificationsPanel) }
+    }
+
+    fun dismissNotificationsPanel() {
+        _uiState.update { it.copy(showNotificationsPanel = false) }
+    }
+
+    fun spendBankedStepsOnDelve() = runGameMutation { state ->
+        com.sparkborne.game.engine.StepBankManager.spendBankedStepsOnDelve(state)
+    }
+
+    fun spendBankedStepsOnTravel() = runGameMutation { state ->
+        com.sparkborne.game.engine.StepBankManager.spendBankedStepsOnTravel(state)
+    }
+
+    fun spendBankedStepsOnActivity(maxCycles: Int? = null) = runGameMutation { state ->
+        com.sparkborne.game.engine.StepBankManager.spendBankedStepsOnActivity(state, maxCycles)
     }
 
     private fun runGameMutation(transform: (GameState) -> Result<GameState>) {

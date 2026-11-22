@@ -176,6 +176,8 @@ fun WorldTabScreen(
     onBuyShopItem: (String) -> Unit,
     onStartContractFromTown: (String) -> Unit,
     onVisitedShop: () -> Unit = {},
+    onSpendBankedStepsOnTravel: () -> Unit = {},
+    onSpendBankedStepsOnActivity: (Int?) -> Unit = {},
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
@@ -458,6 +460,8 @@ fun WorldTabScreen(
                         selectedTownId = null
                     },
                     onVisitedShop = onVisitedShop,
+                    onSpendBankedStepsOnTravel = onSpendBankedStepsOnTravel,
+                    onSpendBankedStepsOnActivity = onSpendBankedStepsOnActivity,
                 )
             }
         }
@@ -540,6 +544,8 @@ private fun TownSheetContent(
     onBuyShopItem: (String) -> Unit,
     onStartContractFromTown: (String) -> Unit,
     onVisitedShop: () -> Unit = {},
+    onSpendBankedStepsOnTravel: () -> Unit = {},
+    onSpendBankedStepsOnActivity: (Int?) -> Unit = {},
 ) {
     val colors = RpgTheme.colors
     val elemColor = elementColor(town.element)
@@ -656,6 +662,16 @@ private fun TownSheetContent(
                                     progress = travel.progressFraction,
                                     fillColor = colors.accentPrimary,
                                 )
+                                if (state.player.savedSteps > 0) {
+                                    val needed = (travel.stepsRequired - travel.stepsWalked).coerceAtLeast(0)
+                                    val toSpend = minOf(state.player.savedSteps, needed)
+                                    RpgActionButton(
+                                        text = "🥾 SPEND %,d BANKED STEPS".format(toSpend),
+                                        onClick = onSpendBankedStepsOnTravel,
+                                        containerColor = colors.vitalityEmerald,
+                                        modifier = Modifier.fillMaxWidth(),
+                                    )
+                                }
                                 OutlinedButton(onClick = onCancelTravel, modifier = Modifier.fillMaxWidth()) {
                                     Text("Cancel Travel")
                                 }
@@ -761,6 +777,22 @@ private fun TownSheetContent(
                                     fillColor = colors.accentSecondary,
                                     barHeight = 9.dp,
                                 )
+                                if (state.player.savedSteps > 0) {
+                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                                        RpgActionButton(
+                                            text = "🥾 +1 CYCLE",
+                                            onClick = { onSpendBankedStepsOnActivity(1) },
+                                            containerColor = colors.vitalityEmerald,
+                                            modifier = Modifier.weight(1f),
+                                        )
+                                        RpgActionButton(
+                                            text = "🥾 SPEND ALL",
+                                            onClick = { onSpendBankedStepsOnActivity(null) },
+                                            containerColor = colors.accentPrimary,
+                                            modifier = Modifier.weight(1f),
+                                        )
+                                    }
+                                }
                                 OutlinedButton(onClick = onStopActivity, modifier = Modifier.fillMaxWidth()) {
                                     Text("Stop Activity", fontFamily = FontFamily.Monospace)
                                 }
