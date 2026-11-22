@@ -59,13 +59,14 @@ import com.sparkborne.telemetry.model.MuscleGroup
 import kotlin.math.roundToInt
 
 private enum class HeroSubTab(val label: String) {
-    PAPER_DOLL("Equipment"),
+    PAPER_DOLL("Gear"),
+    SKILLS("Skills"),
     FORGE("Forge"),
     SPELLS("Spells"),
 }
 
 /**
- * Component 3: Game-style RPG Paper-Doll Hero Equipment Sheet + Visual Muscle Strength Matrix.
+ * Component 3: Game-style RPG Paper-Doll Hero Equipment Sheet + Skills (1-99) & Skill Chests + Muscle Matrix.
  */
 @Composable
 fun HeroTabScreen(
@@ -74,6 +75,7 @@ fun HeroTabScreen(
     onForgeOrEquipWeapon: (String) -> Unit,
     onForgeOrEquipArmor: (String) -> Unit,
     onUnlockOrAttuneSpell: (String) -> Unit,
+    onOpenSkillChest: (com.sparkborne.game.model.SkillType) -> Unit = {},
 ) {
     val stats = CombatStatsCalculator.calculate(state)
     val player = state.player
@@ -521,6 +523,100 @@ fun HeroTabScreen(
                                 containerColor = colors.accentSecondary,
                             )
                         }
+                    }
+                }
+            }
+
+            HeroSubTab.SKILLS -> {
+                item {
+                    val totalChests = player.totalSkillChests()
+                    RpgPanel(borderColor = colors.accentPrimary) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column {
+                                Text(
+                                    "TOTAL SKILL LEVEL · ${player.totalSkillLevel()} / ${com.sparkborne.game.model.SkillType.entries.size * 99}",
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = colors.accentPrimary,
+                                )
+                                Text(
+                                    "Every 2 Skill Levels grants +1% Work Efficiency (fewer steps per cycle). Every 5 cycles drops a Skill Chest!",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = colors.textMuted,
+                                )
+                            }
+                        }
+                        if (totalChests > 0) {
+                            Spacer(Modifier.height(6.dp))
+                            Text(
+                                "🎁 SKILL CHESTS READY ($totalChests) · Opened: ${player.totalChestsOpened} (Egg every 5th!)",
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = colors.vitalityEmerald,
+                            )
+                            player.skillChests.entries.filter { it.value > 0 }.forEach { (skill, count) ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(top = 4.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Text(
+                                        "${skill.icon} ${skill.displayName} Chest x$count",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 12.sp,
+                                    )
+                                    RpgActionButton(
+                                        text = "OPEN CHEST",
+                                        onClick = { onOpenSkillChest(skill) },
+                                        containerColor = colors.vitalityEmerald,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                items(com.sparkborne.game.model.SkillType.entries, key = { it.name }) { skill ->
+                    val xp = player.skillXp[skill] ?: 0
+                    val lvl = com.sparkborne.game.engine.SkillEngine.levelForXp(xp)
+                    val eff = com.sparkborne.game.engine.SkillEngine.workEfficiencyPercent(lvl)
+                    val (curXp, needXp) = com.sparkborne.game.engine.SkillEngine.xpToNextLevel(xp)
+                    val chests = player.skillChests[skill] ?: 0
+                    RpgPanel(borderColor = if (lvl > 1) colors.accentSecondary else colors.pixelBorder) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                "${skill.icon} ${skill.displayName}",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp,
+                                color = colors.textPrimary,
+                            )
+                            Text(
+                                "LV.$lvl/99 · +$eff% Eff" + if (chests > 0) " · 🎁$chests" else "",
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (lvl > 1) colors.accentPrimary else colors.textMuted,
+                            )
+                        }
+                        Text(skill.description, style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
+                        RpgProgressBar(
+                            label = if (lvl >= 99) "MAX LEVEL" else "XP",
+                            valueText = if (lvl >= 99) "99/99" else "$curXp / $needXp",
+                            progress = (curXp.toFloat() / needXp.toFloat()).coerceIn(0f, 1f),
+                            fillColor = colors.accentSecondary,
+                        )
                     }
                 }
             }

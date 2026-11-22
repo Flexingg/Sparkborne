@@ -75,6 +75,7 @@ class SparkpediaAndIntroTest {
             val delta = SnapshotIdempotency.computeDelta(if (i == 0) null else prevSnap, snap)
             prevSnap = snap
             state = TelemetryRulesEngine.applyTelemetry(state, snap, delta, null).state
+            state = com.sparkborne.game.engine.StepBankManager.spendBankedStepsOnDelve(state).getOrThrow()
             state = ExpeditionManager.enterCurrentNode(state).getOrThrow()
 
             var turns = 0

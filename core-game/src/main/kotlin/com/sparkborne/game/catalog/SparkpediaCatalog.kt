@@ -32,10 +32,19 @@ object SparkpediaCatalog {
         CodexEntry(
             id = "guide_step_bank",
             category = CodexCategory.GUIDES,
-            title = "The Step Bank",
-            subtitle = "Bank Steps All Day · Spend on Demand",
-            summary = "Any idle or overflow steps synced from SparkyFitness are safely stored in your Step Bank so you can play in bursts whenever you want.",
-            mechanicsDetail = "• Starting Capacity: 50,000 steps.\n• Scales into the millions as you increase Hero Level (+25k/lvl + 5k×lvl²) and Muscle Strength Ranks (+10k per rank).\n• Spend banked steps anytime on World Travel, repeatable Town Activities, or unlocking Delve nodes!",
+            title = "The Step Bank (Action Points)",
+            subtitle = "Bank All Steps · Spend Anytime Like AP",
+            summary = "Every step synced from Phone Sensor, Health Connect, or SparkyFitness builds up in your Step Bank so you can spend them like Action Points whenever you play.",
+            mechanicsDetail = "• Starting Capacity: 50,000 steps (scales into millions with Hero Level & Muscle Strength Ranks).\n• Spend banked steps on demand to travel the World Map, run Town Activity cycles, or unlock Delve nodes in one sitting!",
+            unlockHint = "Unlocked from the start.",
+        ),
+        CodexEntry(
+            id = "guide_skills_chests",
+            category = CodexCategory.GUIDES,
+            title = "Skill Levels (1–99) & Skill Chests",
+            subtitle = "Work Efficiency · Masterwork Scaling · Bonus Chests",
+            summary = "Every Town Activity trains one of 11 specialized skills from Level 1 to 99, permanently cutting step costs and dropping Skill Chests.",
+            mechanicsDetail = "• Every 2 Skill Levels grants +1% Work Efficiency (up to +49% at Lv 99), reducing steps needed per cycle.\n• Every 5 completions in a skill awards a Skill Chest (open in Hero → Skills) for scaled Gold, Iron, Shards, and bonus Skill XP.\n• Every 5th Skill Chest opened guarantees a rare Skill-Themed Monster Egg!",
             unlockHint = "Unlocked from the start.",
         ),
         CodexEntry(

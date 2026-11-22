@@ -123,8 +123,10 @@ object StepBankManager {
             return Result.failure(IllegalStateException("Your Step Bank is empty. Sync SparkyFitness to bank steps."))
         }
 
+        val skill = com.sparkborne.game.model.SkillType.fromTag(def.skillTag)
+        val effSteps = SkillEngine.effectiveStepsPerAction(def.stepsPerAction, state, skill)
         val toSpend = if (maxCycles != null && maxCycles > 0) {
-            val neededForCycles = (maxCycles * def.stepsPerAction - activeAct.stepsProgress).coerceAtLeast(1)
+            val neededForCycles = (maxCycles * effSteps - activeAct.stepsProgress).coerceAtLeast(1)
             min(available, neededForCycles)
         } else {
             available

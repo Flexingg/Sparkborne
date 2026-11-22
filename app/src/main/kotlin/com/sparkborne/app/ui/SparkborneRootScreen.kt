@@ -126,6 +126,7 @@ fun SparkborneRootScreen(
                     onForgeOrEquipWeapon = viewModel::forgeOrEquipWeapon,
                     onForgeOrEquipArmor = viewModel::forgeOrEquipArmor,
                     onUnlockOrAttuneSpell = viewModel::unlockOrAttuneSpell,
+                    onOpenSkillChest = viewModel::openSkillChest,
                 )
 
                 SparkborneTab.MONSTERS -> MonstersTabScreen(

@@ -143,12 +143,14 @@ object WorldManager {
             }
         }
 
-        // 2. Repeatable Town Activity (WalkScape-style multi-completion loop)
+        // 2. Repeatable Town Activity (WalkScape-style multi-completion loop with Skill Efficiency & Chests)
         val activeAct = state.activeActivity ?: return state
         val def = WorldCatalog.activityById(activeAct.activityId) ?: return state
+        val skill = com.sparkborne.game.model.SkillType.fromTag(def.skillTag)
+        val effectiveStepsPerAction = SkillEngine.effectiveStepsPerAction(def.stepsPerAction, state, skill)
         val totalProgress = activeAct.stepsProgress + effectiveSteps
-        val completions = totalProgress / def.stepsPerAction
-        val remainder = totalProgress % def.stepsPerAction
+        val completions = totalProgress / effectiveStepsPerAction
+        val remainder = totalProgress % effectiveStepsPerAction
 
         if (completions <= 0) {
             return state.copy(activeActivity = activeAct.copy(stepsProgress = remainder))
@@ -190,13 +192,25 @@ object WorldManager {
 
         events.add("${def.name} x$completions: +${goldGain}g, +${ironGain}fe, +${shardGain}sh, +${xpGain}XP.")
 
-        return state.copy(
+        val prevCompletions = activeAct.completionsCount
+        val nextCompletions = prevCompletions + completions
+        val baseNext = state.copy(
             player = updatedPlayer,
             monsters = updatedMonsters,
             activeActivity = activeAct.copy(
                 stepsProgress = remainder,
-                completionsCount = activeAct.completionsCount + completions,
+                completionsCount = nextCompletions,
             ),
         )
+
+        val withSkill = SkillEngine.awardSkillProgress(
+            state = baseNext,
+            skill = skill,
+            xpGain = xpGain,
+            previousCompletions = prevCompletions,
+            newCompletions = nextCompletions,
+            events = events,
+        )
+        return SparkpediaEngine.syncCodexUnlocks(withSkill)
     }
 }

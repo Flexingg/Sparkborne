@@ -545,6 +545,10 @@ class SparkborneViewModel(application: Application) : AndroidViewModel(applicati
         ExpeditionManager.evolveMonster(state, monsterId)
     }
 
+    fun openSkillChest(skill: com.sparkborne.game.model.SkillType) = runGameMutation { state ->
+        com.sparkborne.game.engine.SkillEngine.openSkillChest(state, skill).map { (next, _) -> next }
+    }
+
     // --- WalkScape World, Travel, Activities & Shops ---
 
     fun startTravel(destinationId: String) = runGameMutation { state ->

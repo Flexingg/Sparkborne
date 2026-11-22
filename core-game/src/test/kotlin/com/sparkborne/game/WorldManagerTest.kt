@@ -30,11 +30,14 @@ class WorldManagerTest {
             syncedAtEpochMs = 1_000L,
         )
         val delta = SnapshotIdempotency.computeDelta(null, snap)
-        val result = TelemetryRulesEngine.applyTelemetry(state, snap, delta, null)
+        val banked = TelemetryRulesEngine.applyTelemetry(state, snap, delta, null).state
+        assertEquals(4000, banked.player.savedSteps)
+        val arrived = com.sparkborne.game.engine.StepBankManager.spendBankedStepsOnTravel(banked).getOrThrow()
 
-        assertEquals("loc_verdant_crossing", result.state.currentLocationId)
-        assertNull(result.state.activeTravel)
-        assertTrue("loc_verdant_crossing" in result.state.discoveredLocationIds)
+        assertEquals("loc_verdant_crossing", arrived.currentLocationId)
+        assertNull(arrived.activeTravel)
+        assertEquals(500, arrived.player.savedSteps)
+        assertTrue("loc_verdant_crossing" in arrived.discoveredLocationIds)
     }
 
     @Test
@@ -54,7 +57,8 @@ class WorldManagerTest {
             syncedAtEpochMs = 1_000L,
         )
         val delta = SnapshotIdempotency.computeDelta(null, snap)
-        val result = TelemetryRulesEngine.applyTelemetry(state, snap, delta, null).state
+        val banked = TelemetryRulesEngine.applyTelemetry(state, snap, delta, null).state
+        val result = com.sparkborne.game.engine.StepBankManager.spendBankedStepsOnActivity(banked).getOrThrow()
 
         // 3400 steps = 3 completions + 400 remainder
         assertEquals(3, result.activeActivity!!.completionsCount)

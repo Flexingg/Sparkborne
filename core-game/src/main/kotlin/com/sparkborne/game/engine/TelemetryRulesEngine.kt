@@ -183,7 +183,8 @@ object TelemetryRulesEngine {
         val reconciledDelta = delta.copy(stepsDelta = netSyncedStepsDelta)
         val newCreditedHighWater = maxOf(prevCreditedSteps, snapshot.steps, prevCreditedSteps + netSyncedStepsDelta)
 
-        // Apply steps & contract progress to ActiveExpedition
+        // Apply non-step contract progress (lifting/protein/hydration/sleep) to ActiveExpedition;
+        // Steps always build up cleanly in the Step Bank so the player can spend them like Action Points!
         val updatedExpedition = state.activeExpedition?.let { exp ->
             if (exp.status == ExpeditionStatus.ACTIVE && snapshot.date >= exp.startedDate) {
                 applyTelemetryToExpedition(
@@ -212,34 +213,13 @@ object TelemetryRulesEngine {
             dailyCreditedSteps = updatedCreditedMap,
         )
 
-        // 6. Apply reconciled steps: overflow from active delve or idle steps bank cleanly into Step Bank!
-        val isDelveActive = updatedExpedition?.status == ExpeditionStatus.ACTIVE
+        // 6. Bank ALL reconciled steps directly into the Step Bank (Action Points!)
         if (reconciledDelta.stepsDelta > 0) {
             val effectiveSteps = (reconciledDelta.stepsDelta * stance.stepEfficiencyMultiplier).roundToInt()
-            if (isDelveActive) {
-                val prevNode = state.activeExpedition?.currentNode
-                val nextNode = updatedExpedition?.currentNode
-                val consumedByNode = if (prevNode != null && nextNode != null && prevNode.index == nextNode.index) {
-                    (nextNode.stepsApplied - prevNode.stepsApplied).coerceAtLeast(0)
-                } else {
-                    0
-                }
-                val overflow = (effectiveSteps - consumedByNode).coerceAtLeast(0)
-                if (overflow > 0) {
-                    val (bankedState, accepted) = StepBankManager.depositSteps(nextState, overflow)
-                    nextState = bankedState
-                    if (accepted > 0) {
-                        events.add("Banked +$accepted extra steps (${nextState.player.savedSteps}/${nextState.player.maxStepBankCapacity()}).")
-                    }
-                }
-            } else if (nextState.activeTravel != null || nextState.activeActivity != null) {
-                nextState = WorldManager.applyStepsToWorld(nextState, effectiveSteps, events)
-            } else {
-                val (bankedState, accepted) = StepBankManager.depositSteps(nextState, effectiveSteps)
-                nextState = bankedState
-                if (accepted > 0) {
-                    events.add("Banked +$accepted steps (${nextState.player.savedSteps}/${nextState.player.maxStepBankCapacity()}).")
-                }
+            val (bankedState, accepted) = StepBankManager.depositSteps(nextState, effectiveSteps)
+            nextState = bankedState
+            if (accepted > 0) {
+                events.add("Banked +$accepted steps (${nextState.player.savedSteps}/${nextState.player.maxStepBankCapacity()}).")
             }
         }
 
@@ -258,22 +238,7 @@ object TelemetryRulesEngine {
         events: MutableList<String>,
     ): ActiveExpedition {
         val effectiveSteps = (delta.stepsDelta * stepEfficiency).roundToInt()
-        var remainingSteps = effectiveSteps
-
-        val updatedNodes = expedition.nodes.map { node ->
-            if (node.index == expedition.currentNodeIndex && !node.cleared && remainingSteps > 0) {
-                val needed = (node.stepsRequired - node.stepsApplied).coerceAtLeast(0)
-                val appliedHere = min(needed, remainingSteps)
-                remainingSteps -= appliedHere
-                val nextApplied = node.stepsApplied + appliedHere
-                if (node.stepsApplied < node.stepsRequired && nextApplied >= node.stepsRequired) {
-                    events.add("Delve node unlocked: ${node.title}!")
-                }
-                node.copy(stepsApplied = nextApplied)
-            } else {
-                node
-            }
-        }
+        val updatedNodes = expedition.nodes
 
         val prevProg = expedition.progress
         val updatedProgress = prevProg.copy(

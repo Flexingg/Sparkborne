@@ -162,7 +162,19 @@ data class PlayerState(
     val ownedArmorIds: Set<String> = emptySet(),
     val unlockedSpellIds: Set<String> = emptySet(),
     val activeBuffs: DailyDelveBuffs = DailyDelveBuffs(),
+    val skillXp: Map<SkillType, Int> = emptyMap(),
+    val skillChests: Map<SkillType, Int> = emptyMap(),
+    val totalChestsOpened: Int = 0,
 ) {
+    fun skillLevel(skill: SkillType): Int =
+        com.sparkborne.game.engine.SkillEngine.levelForXp(skillXp[skill] ?: 0)
+
+    fun totalSkillLevel(): Int =
+        SkillType.entries.sumOf { skillLevel(it) }
+
+    fun totalSkillChests(): Int =
+        skillChests.values.sum()
+
     /**
      * Deterministic rank curve from accumulated effective lifting volume (kg) for a muscle group.
      * Rank 1 starts at 0 kg; Rank 2 at 250 kg; Rank 3 at 1000 kg; Rank 4 at 2250 kg; etc.

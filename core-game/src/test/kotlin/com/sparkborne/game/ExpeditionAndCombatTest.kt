@@ -41,6 +41,7 @@ class ExpeditionAndCombatTest {
             previousSnap = snap
 
             state = TelemetryRulesEngine.applyTelemetry(state, snap, delta, null).state
+            state = com.sparkborne.game.engine.StepBankManager.spendBankedStepsOnDelve(state).getOrThrow()
             state = ExpeditionManager.enterCurrentNode(state).getOrThrow()
 
             // If combat started, fight deterministically until victory
