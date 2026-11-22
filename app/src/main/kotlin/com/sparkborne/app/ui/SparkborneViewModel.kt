@@ -30,6 +30,7 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 
 enum class SparkborneTab(val label: String, val badge: String) {
+    WORLD("World", "🗺"),
     DELVE("Delve", "⚔"),
     HERO("Hero", "🛡"),
     MONSTERS("Beasts", "🐉"),
@@ -37,7 +38,7 @@ enum class SparkborneTab(val label: String, val badge: String) {
 }
 
 data class SparkborneUiState(
-    val selectedTab: SparkborneTab = SparkborneTab.DELVE,
+    val selectedTab: SparkborneTab = SparkborneTab.WORLD,
     val selectedTheme: SparkborneThemeId = SparkborneThemeId.EMBER_OBSIDIAN,
     val selectedSplash: SplashStyleId = SplashStyleId.TWILIGHT_CITADEL,
     val showSplash: Boolean = true,
@@ -301,6 +302,40 @@ class SparkborneViewModel(application: Application) : AndroidViewModel(applicati
 
     fun evolveMonster(monsterId: String) = runGameMutation { state ->
         ExpeditionManager.evolveMonster(state, monsterId)
+    }
+
+    // --- WalkScape World, Travel, Activities & Shops ---
+
+    fun startTravel(destinationId: String) = runGameMutation { state ->
+        com.sparkborne.game.engine.WorldManager.startTravel(state, destinationId)
+    }
+
+    fun cancelTravel() = runGameMutation { state ->
+        Result.success(com.sparkborne.game.engine.WorldManager.cancelTravel(state))
+    }
+
+    fun startActivity(activityId: String) = runGameMutation { state ->
+        com.sparkborne.game.engine.WorldManager.startActivity(state, activityId)
+    }
+
+    fun stopActivity() = runGameMutation { state ->
+        Result.success(com.sparkborne.game.engine.WorldManager.stopActivity(state))
+    }
+
+    fun buyShopListing(listingId: String) = runGameMutation { state ->
+        com.sparkborne.game.engine.WorldManager.buyShopListing(state, listingId)
+    }
+
+    fun startContractFromTown(contractId: String) {
+        viewModelScope.launch {
+            gameRepository.updateState { state ->
+                ExpeditionManager.startExpedition(state, contractId, LocalDate.now())
+            }.onSuccess {
+                _uiState.update { it.copy(selectedTab = SparkborneTab.DELVE, errorMessage = null) }
+            }.onFailure { ex ->
+                _uiState.update { it.copy(errorMessage = ex.message ?: "Could not start contract") }
+            }
+        }
     }
 
     private fun runGameMutation(transform: (GameState) -> Result<GameState>) {

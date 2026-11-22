@@ -99,6 +99,17 @@ fun SparkborneRootScreen(viewModel: SparkborneViewModel) {
                 label = "tab_transition",
             ) { currentTab ->
                 when (currentTab) {
+                    SparkborneTab.WORLD -> WorldTabScreen(
+                        state = state.gameState,
+                        errorMessage = state.errorMessage,
+                        onStartTravel = viewModel::startTravel,
+                        onCancelTravel = viewModel::cancelTravel,
+                        onStartActivity = viewModel::startActivity,
+                        onStopActivity = viewModel::stopActivity,
+                        onBuyShopItem = viewModel::buyShopListing,
+                        onStartContractFromTown = viewModel::startContractFromTown,
+                    )
+
                     SparkborneTab.DELVE -> DelveTabScreen(
                         state = state.gameState,
                         errorMessage = state.errorMessage,

@@ -157,17 +157,25 @@ object TelemetryRulesEngine {
         }
 
         val updatedHashes = state.processedDateHashes + (snapshot.date to snapshot.contentHash)
-        val mergedLog = (events + state.recentLog).take(30)
 
-        val nextState = state.copy(
+        var nextState = state.copy(
             player = updatedPlayer,
             monsters = updatedMonsters,
             activeMonsterId = state.activeMonsterId ?: updatedMonsters.firstOrNull()?.id,
             eggs = remainingEggs,
             activeExpedition = updatedExpedition,
             processedDateHashes = updatedHashes,
-            recentLog = mergedLog,
         )
+
+        // 6. When not in an active delve, synced steps drive WalkScape World Travel or Town Activities
+        val isDelveActive = updatedExpedition?.status == ExpeditionStatus.ACTIVE
+        if (!isDelveActive && delta.stepsDelta > 0) {
+            val effectiveSteps = (delta.stepsDelta * stance.stepEfficiencyMultiplier).roundToInt()
+            nextState = WorldManager.applyStepsToWorld(nextState, effectiveSteps, events)
+        }
+
+        val mergedLog = (events + state.recentLog).take(30)
+        nextState = nextState.copy(recentLog = mergedLog)
 
         return TelemetryApplyResult(state = nextState, applied = true, events = events)
     }
