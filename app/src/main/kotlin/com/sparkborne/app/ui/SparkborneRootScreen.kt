@@ -30,12 +30,14 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sparkborne.app.R
 import com.sparkborne.app.ui.components.PixelSprite
+import com.sparkborne.app.ui.components.RpgActionButton
 import com.sparkborne.app.ui.components.RpgCurrencyRow
 import com.sparkborne.app.ui.components.RpgPanel
 import com.sparkborne.app.ui.components.UpdateAvailableBanner
@@ -476,6 +478,112 @@ fun SparkborneRootScreen(
                 state = game,
                 onClose = viewModel::closeSparkpedia,
             )
+        }
+
+        // 5. "While You Were Away" RPG Chronicle Modal
+        val away = game.pendingAwaySummary
+        if (!state.showSparkpedia && away != null && away.hasAnythingToShow) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color(0xB806080D))
+                    .clickable(onClick = viewModel::dismissAwaySummary)
+                    .padding(horizontal = 20.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = colors.panelSurface,
+                    border = BorderStroke(2.dp, colors.accentPrimary),
+                    shadowElevation = 16.dp,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(enabled = false) {},
+                ) {
+                    Column(
+                        modifier = Modifier.padding(18.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Text(
+                            "🌙 WHILE YOU WERE AWAY",
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = colors.accentPrimary,
+                        )
+                        Text(
+                            "Your real-world progress has been synced and safely stored in your Step Bank!",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.textMuted,
+                        )
+
+                        if (away.stepsBanked > 0) {
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = colors.panelElevated,
+                                border = BorderStroke(1.dp, colors.vitalityEmerald),
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Text("🥾 Steps Banked (AP)", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = colors.textPrimary)
+                                    Text(
+                                        "+%,d".format(away.stepsBanked),
+                                        fontFamily = FontFamily.Monospace,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        fontSize = 15.sp,
+                                        color = colors.vitalityEmerald,
+                                    )
+                                }
+                            }
+                        }
+
+                        if (away.liftingKgAdded > 0.0) {
+                            Text(
+                                "🏋️ Lifting Volume: +%,d kg applied to Muscle Ranks".format(away.liftingKgAdded.toInt()),
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 12.sp,
+                                color = colors.accentPrimary,
+                            )
+                        }
+                        if (away.sleepMinutesAdded > 0 || away.hydrationMlAdded > 0) {
+                            Text(
+                                "💧 Recovery: +${away.sleepMinutesAdded / 60}h ${away.sleepMinutesAdded % 60}m Sleep · +%,d mL Dew".format(away.hydrationMlAdded),
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 12.sp,
+                                color = colors.accentSecondary,
+                            )
+                        }
+                        if (away.eggsHatched.isNotEmpty()) {
+                            Text(
+                                "🥚 HATCHED: ${away.eggsHatched.joinToString(", ")}!",
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = colors.vitalityEmerald,
+                            )
+                        }
+
+                        if (away.highlights.isNotEmpty()) {
+                            Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                away.highlights.take(4).forEach { line ->
+                                    Text("• $line", style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
+                                }
+                            }
+                        }
+
+                        RpgActionButton(
+                            text = "CLAIM & SPEND STEPS (%,d AP)".format(game.player.savedSteps),
+                            onClick = viewModel::dismissAwaySummary,
+                            containerColor = colors.accentPrimary,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                }
+            }
         }
     }
 }

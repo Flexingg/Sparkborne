@@ -569,6 +569,10 @@ class SparkborneViewModel(application: Application) : AndroidViewModel(applicati
         com.sparkborne.game.engine.CraftingEngine.useConsumable(state, recipeId)
     }
 
+    fun dismissAwaySummary() = runGameMutation { state ->
+        Result.success(com.sparkborne.game.engine.StepBankManager.dismissAwaySummary(state))
+    }
+
     // --- WalkScape World, Travel, Activities & Shops ---
 
     fun startTravel(destinationId: String) = runGameMutation { state ->

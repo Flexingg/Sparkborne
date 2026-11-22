@@ -40,8 +40,23 @@ object StepBankManager {
 
         val (bankedState, accepted) = depositSteps(state, netNew)
         val updatedWatermarks = bankedState.dailyCreditedSteps + (date to totalPhoneStepsToday)
-        return bankedState.copy(dailyCreditedSteps = updatedWatermarks) to accepted
+        val nextAway = if (accepted >= 250) {
+            val liveSummary = com.sparkborne.game.model.AwaySummary(
+                stepsBanked = accepted,
+                highlights = listOf("Live phone pedometer banked +$accepted steps."),
+            )
+            state.pendingAwaySummary?.merge(liveSummary) ?: liveSummary
+        } else {
+            state.pendingAwaySummary
+        }
+        return bankedState.copy(
+            dailyCreditedSteps = updatedWatermarks,
+            pendingAwaySummary = nextAway,
+        ) to accepted
     }
+
+    fun dismissAwaySummary(state: GameState): GameState =
+        state.copy(pendingAwaySummary = null)
 
     /**
      * Spends banked steps toward the current locked Delve node (up to what's needed to unlock it).

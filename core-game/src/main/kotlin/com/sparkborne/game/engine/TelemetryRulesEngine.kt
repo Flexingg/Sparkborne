@@ -215,17 +215,39 @@ object TelemetryRulesEngine {
         )
 
         // 6. Bank ALL reconciled steps directly into the Step Bank (Action Points!)
+        var stepsAccepted = 0
         if (reconciledDelta.stepsDelta > 0) {
             val effectiveSteps = (reconciledDelta.stepsDelta * stance.stepEfficiencyMultiplier).roundToInt()
             val (bankedState, accepted) = StepBankManager.depositSteps(nextState, effectiveSteps)
             nextState = bankedState
+            stepsAccepted = accepted
             if (accepted > 0) {
                 events.add("Banked +$accepted steps (${nextState.player.savedSteps}/${nextState.player.maxStepBankCapacity()}).")
             }
         }
 
+        // 7. Accumulate "While You Were Away" Chronicle Summary
+        val incomingSummary = com.sparkborne.game.model.AwaySummary(
+            stepsBanked = stepsAccepted,
+            liftingKgAdded = delta.totalLiftingVolumeKgDelta,
+            sleepMinutesAdded = delta.sleepMinutesDelta,
+            hydrationMlAdded = delta.hydrationMlDelta,
+            eggsHatched = hatchedMonsters.map { it.name },
+            highlights = events.take(6),
+        )
+        val mergedAway = if (incomingSummary.hasAnythingToShow) {
+            state.pendingAwaySummary?.merge(incomingSummary) ?: incomingSummary
+        } else {
+            state.pendingAwaySummary
+        }
+
         val mergedLog = (events + state.recentLog).take(30)
-        nextState = SparkpediaEngine.onTelemetrySynced(nextState.copy(recentLog = mergedLog))
+        nextState = SparkpediaEngine.onTelemetrySynced(
+            nextState.copy(
+                recentLog = mergedLog,
+                pendingAwaySummary = mergedAway,
+            ),
+        )
 
         return TelemetryApplyResult(state = nextState, applied = true, events = events)
     }

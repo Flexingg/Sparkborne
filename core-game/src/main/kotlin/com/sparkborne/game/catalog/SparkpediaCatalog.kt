@@ -75,6 +75,15 @@ object SparkpediaCatalog {
             unlockHint = "Unlocked from the start.",
         ),
         CodexEntry(
+            id = "guide_while_away",
+            category = CodexCategory.GUIDES,
+            title = "While You Were Away Chronicle",
+            subtitle = "Background Sync · Step Bank Summary",
+            summary = "Whenever Health Connect, SparkyFitness, or your phone pedometer banks new progress while you were away, Sparkborne greets you with an itemized Chronicle.",
+            mechanicsDetail = "Reviews Steps Banked as Action Points, Liftosaur Muscle Strength Volume added, Sleep Warmth & Hydration Dew infused into Eggs, and any Companions hatched — then lets you jump straight into spending your Step Bank!",
+            unlockHint = "Unlocked from the start.",
+        ),
+        CodexEntry(
             id = "guide_muscle_scaling",
             category = CodexCategory.GUIDES,
             title = "Muscle Strength & Weapons",

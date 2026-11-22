@@ -154,6 +154,32 @@ data class ActiveExpedition(
 }
 
 @Serializable
+data class AwaySummary(
+    val stepsBanked: Int = 0,
+    val liftingKgAdded: Double = 0.0,
+    val sleepMinutesAdded: Int = 0,
+    val hydrationMlAdded: Int = 0,
+    val eggsHatched: List<String> = emptyList(),
+    val highlights: List<String> = emptyList(),
+) {
+    val hasAnythingToShow: Boolean
+        get() = stepsBanked > 0 ||
+            liftingKgAdded > 0.0 ||
+            sleepMinutesAdded > 0 ||
+            hydrationMlAdded > 0 ||
+            eggsHatched.isNotEmpty()
+
+    fun merge(other: AwaySummary): AwaySummary = AwaySummary(
+        stepsBanked = stepsBanked + other.stepsBanked,
+        liftingKgAdded = liftingKgAdded + other.liftingKgAdded,
+        sleepMinutesAdded = sleepMinutesAdded + other.sleepMinutesAdded,
+        hydrationMlAdded = hydrationMlAdded + other.hydrationMlAdded,
+        eggsHatched = (eggsHatched + other.eggsHatched).distinct(),
+        highlights = (other.highlights + highlights).distinct().take(8),
+    )
+}
+
+@Serializable
 data class GameState(
     val player: PlayerState,
     val monsters: List<MonsterCompanion> = emptyList(),
@@ -173,6 +199,7 @@ data class GameState(
     val totalRunsCompleted: Int = 0,
     val totalRunsFailed: Int = 0,
     val recentLog: List<String> = emptyList(),
+    val pendingAwaySummary: AwaySummary? = null,
 ) {
     val activeMonster: MonsterCompanion?
         get() = monsters.firstOrNull { it.id == activeMonsterId } ?: monsters.firstOrNull()

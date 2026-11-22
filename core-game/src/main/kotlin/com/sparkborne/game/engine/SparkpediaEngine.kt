@@ -34,6 +34,7 @@ object SparkpediaEngine {
         unlock("guide_collectibles_museum")
         unlock("guide_toolbelt_gearsets")
         unlock("guide_crafting_consumables")
+        unlock("guide_while_away")
         unlock("guide_health_connect")
         unlock("guide_eastern_frontier")
         unlock("loc_emberhearth")
