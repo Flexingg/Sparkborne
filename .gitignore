@@ -1,0 +1,22 @@
+# Gradle & Build
+.gradle/
+build/
+**/build/
+local.properties
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+*.ipr
+*.iws
+.DS_Store
+
+# Keystores & secrets
+*.jks
+*.keystore
+secrets.properties
+.env
+.env.*
+
+# Logs
+*.log
