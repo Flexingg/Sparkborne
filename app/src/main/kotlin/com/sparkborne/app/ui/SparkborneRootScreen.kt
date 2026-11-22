@@ -56,7 +56,10 @@ private fun formatCompactSteps(steps: Int): String = when {
  *   the toggleable 🔔 Notifications Drawer so you can dismiss or re-open them anytime.
  */
 @Composable
-fun SparkborneRootScreen(viewModel: SparkborneViewModel) {
+fun SparkborneRootScreen(
+    viewModel: SparkborneViewModel,
+    onRequestHealthConnectPermissions: () -> Unit = {},
+) {
     val state by viewModel.uiState.collectAsState()
     val colors = RpgTheme.colors
     val game = state.gameState
@@ -145,6 +148,8 @@ fun SparkborneRootScreen(viewModel: SparkborneViewModel) {
                     onSelectSplash = viewModel::selectSplash,
                     onReplaySplash = viewModel::replaySplash,
                     onResetNewJourney = viewModel::resetNewJourney,
+                    onRequestHealthConnectPermissions = onRequestHealthConnectPermissions,
+                    onSyncHealthConnect = { viewModel.syncHealthConnect(days = 1, silent = false) },
                 )
             }
         }

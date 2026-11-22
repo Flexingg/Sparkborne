@@ -57,6 +57,8 @@ data class SparkborneUiState(
     val updateDownloadProgress: Float? = null,
     val updateStatusMessage: String? = null,
     val installedVersionLabel: String = "${BuildConfig.VERSION_NAME} (#${BuildConfig.VERSION_CODE})",
+    val healthConnectStatus: com.sparkborne.app.data.HealthConnectStatus = com.sparkborne.app.data.HealthConnectStatus(),
+    val healthConnectMessage: String? = null,
 ) {
     val selectedSnapshot: DailyTelemetrySnapshot?
         get() = snapshots.firstOrNull { it.date == selectedDate } ?: snapshots.firstOrNull()
@@ -70,6 +72,7 @@ class SparkborneViewModel(application: Application) : AndroidViewModel(applicati
     private val telemetryRepository = TelemetryRepository(db.dailySnapshotDao())
     private val gameRepository = GameRepository(db.gameStateDao())
     private val appUpdater = AppUpdater(application)
+    private val healthConnectReader = com.sparkborne.app.data.HealthConnectReader(application)
     private val liveStepTracker = com.sparkborne.app.data.LiveStepTracker(application) { date, totalToday ->
         onLivePhoneStepsUpdated(date, totalToday)
     }
@@ -116,6 +119,9 @@ class SparkborneViewModel(application: Application) : AndroidViewModel(applicati
         // Start hardware step counter if permission already granted
         liveStepTracker.start()
 
+        // Check Health Connect status & pull local metrics instantaneously
+        refreshHealthConnectStatus(syncIfGranted = true)
+
         // Schedule 15-minute periodic background sync & quiet auto-sync on launch
         com.sparkborne.app.data.SparkyBackgroundSyncWorker.schedule(application)
         if (savedCreds.validate().isSuccess) {
@@ -127,6 +133,71 @@ class SparkborneViewModel(application: Application) : AndroidViewModel(applicati
 
     fun refreshLiveStepTracker() {
         liveStepTracker.start()
+    }
+
+    fun refreshHealthConnectStatus(syncIfGranted: Boolean = true) {
+        viewModelScope.launch {
+            val status = healthConnectReader.getStatus()
+            _uiState.update { it.copy(healthConnectStatus = status) }
+            if (syncIfGranted && status.hasAnyReadPermission) {
+                syncHealthConnect(days = 1, silent = true)
+            }
+        }
+    }
+
+    fun syncHealthConnect(days: Long = 1, silent: Boolean = false) {
+        viewModelScope.launch {
+            val status = healthConnectReader.getStatus()
+            _uiState.update { it.copy(healthConnectStatus = status) }
+            if (!status.isAvailable) {
+                if (!silent) {
+                    _uiState.update { it.copy(healthConnectMessage = "Health Connect is not available on this device.") }
+                }
+                return@launch
+            }
+            if (!status.hasAnyReadPermission) {
+                if (!silent) {
+                    _uiState.update { it.copy(healthConnectMessage = "Grant Health Connect permissions first.") }
+                }
+                return@launch
+            }
+
+            val endDate = LocalDate.now()
+            val startDate = endDate.minusDays((days - 1).coerceAtLeast(0))
+            runCatching {
+                val readings = healthConnectReader.readRange(startDate, endDate)
+                val hcResult = telemetryRepository.syncLocalHealthConnect(readings)
+                if (hcResult.snapshots.isNotEmpty()) {
+                    val allSnapshots = (_uiState.value.snapshots + hcResult.snapshots)
+                        .associateBy { it.date }
+                        .values
+                        .sortedByDescending { it.date }
+                    val trend = BodyweightTrendCalculator.calculate(allSnapshots, endDate)
+                    val (_, events) = gameRepository.applySyncedTelemetry(
+                        snapshots = hcResult.snapshots,
+                        deltas = hcResult.deltas,
+                        trend = trend,
+                    )
+                    val eventSuffix = if (events.isNotEmpty()) " · ${events.size} game update(s)" else ""
+                    _uiState.update {
+                        it.copy(
+                            healthConnectMessage = "Health Connect synced ${hcResult.snapshots.size}d (${hcResult.updatedDays} updated)$eventSuffix",
+                            selectedDate = endDate.toString(),
+                        )
+                    }
+                } else if (!silent) {
+                    _uiState.update {
+                        it.copy(healthConnectMessage = "Health Connect checked — no new records for $startDate → $endDate.")
+                    }
+                }
+            }.onFailure { ex ->
+                if (!silent) {
+                    _uiState.update {
+                        it.copy(healthConnectMessage = "Health Connect sync error: ${ex.message}")
+                    }
+                }
+            }
+        }
     }
 
     private fun onLivePhoneStepsUpdated(date: String, totalPhoneStepsToday: Int) {
@@ -268,10 +339,32 @@ class SparkborneViewModel(application: Application) : AndroidViewModel(applicati
             _uiState.update {
                 it.copy(
                     isSyncing = true,
-                    statusMessage = "Triggering Garmin & Liftosaur sync ($startDate → $endDate)...",
+                    statusMessage = "Reading Health Connect & triggering Garmin/Liftosaur sync ($startDate → $endDate)...",
                     errorMessage = null,
                 )
             }
+
+            // 1. Instant local Health Connect pull first (steps, sleep, hydration, nutrition, weight)
+            var hcSummary = ""
+            runCatching {
+                val hcStatus = healthConnectReader.getStatus()
+                _uiState.update { it.copy(healthConnectStatus = hcStatus) }
+                if (hcStatus.hasAnyReadPermission) {
+                    val readings = healthConnectReader.readRange(startDate, endDate)
+                    if (readings.isNotEmpty()) {
+                        val hcRes = telemetryRepository.syncLocalHealthConnect(readings)
+                        val allSnaps = (_uiState.value.snapshots + hcRes.snapshots)
+                            .associateBy { it.date }
+                            .values
+                            .sortedByDescending { it.date }
+                        val trend = BodyweightTrendCalculator.calculate(allSnaps, endDate)
+                        gameRepository.applySyncedTelemetry(hcRes.snapshots, hcRes.deltas, trend)
+                        hcSummary = "HC ${hcRes.updatedDays}d · "
+                    }
+                }
+            }
+
+            // 2. SparkyFitness backup & Liftosaur lifting / goals sync
             telemetryRepository.syncRange(config, startDate, endDate, triggerUpstreamProviders = true)
                 .onSuccess { result ->
                     val allSnapshots = (_uiState.value.snapshots + result.snapshots)
@@ -289,7 +382,7 @@ class SparkborneViewModel(application: Application) : AndroidViewModel(applicati
                     _uiState.update {
                         it.copy(
                             isSyncing = false,
-                            statusMessage = "${providerText}Synced ${result.snapshots.size}d (${result.updatedDays} updated)$eventSummary",
+                            statusMessage = "${hcSummary}${providerText}Synced ${result.snapshots.size}d (${result.updatedDays} updated)$eventSummary",
                             errorMessage = null,
                             selectedDate = endDate.toString(),
                         )
@@ -297,7 +390,11 @@ class SparkborneViewModel(application: Application) : AndroidViewModel(applicati
                 }
                 .onFailure { ex ->
                     _uiState.update {
-                        it.copy(isSyncing = false, statusMessage = null, errorMessage = ex.message ?: "Sync failed")
+                        it.copy(
+                            isSyncing = false,
+                            statusMessage = if (hcSummary.isNotEmpty()) "${hcSummary}Sparky offline (using local Health Connect)" else null,
+                            errorMessage = ex.message ?: "Sync failed",
+                        )
                     }
                 }
         }

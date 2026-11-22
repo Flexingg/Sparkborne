@@ -16,7 +16,9 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.core.content.ContextCompat
+import androidx.health.connect.client.PermissionController
 import androidx.lifecycle.ViewModelProvider
+import com.sparkborne.app.data.HealthConnectReader
 import com.sparkborne.app.ui.AnimatedSplashScreen
 import com.sparkborne.app.ui.SparkborneRootScreen
 import com.sparkborne.app.ui.SparkborneViewModel
@@ -31,6 +33,14 @@ class MainActivity : ComponentActivity() {
     ) { granted ->
         if (granted && ::viewModel.isInitialized) {
             viewModel.refreshLiveStepTracker()
+        }
+    }
+
+    private val healthConnectPermissionLauncher = registerForActivityResult(
+        PermissionController.createRequestPermissionResultContract(),
+    ) { _ ->
+        if (::viewModel.isInitialized) {
+            viewModel.refreshHealthConnectStatus(syncIfGranted = true)
         }
     }
 
@@ -69,10 +79,22 @@ class MainActivity : ComponentActivity() {
                             onFinished = viewModel::dismissSplash,
                         )
                     } else {
-                        SparkborneRootScreen(viewModel = viewModel)
+                        SparkborneRootScreen(
+                            viewModel = viewModel,
+                            onRequestHealthConnectPermissions = {
+                                healthConnectPermissionLauncher.launch(HealthConnectReader.ALL_PERMISSIONS)
+                            },
+                        )
                     }
                 }
             }
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (::viewModel.isInitialized) {
+            viewModel.refreshHealthConnectStatus(syncIfGranted = true)
         }
     }
 }

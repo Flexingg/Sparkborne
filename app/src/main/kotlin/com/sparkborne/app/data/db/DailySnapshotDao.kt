@@ -18,6 +18,9 @@ interface DailySnapshotDao {
     @Query("SELECT * FROM daily_telemetry_snapshots WHERE date BETWEEN :startDate AND :endDate ORDER BY date ASC")
     suspend fun getRange(startDate: String, endDate: String): List<DailySnapshotEntity>
 
+    @Query("SELECT * FROM daily_telemetry_snapshots ORDER BY date DESC LIMIT 1")
+    suspend fun getLatest(): DailySnapshotEntity?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertAll(entities: List<DailySnapshotEntity>)
 }

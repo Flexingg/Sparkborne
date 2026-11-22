@@ -24,16 +24,34 @@ class SparkyBackgroundSyncWorker(
 ) : CoroutineWorker(appContext, params) {
 
     override suspend fun doWork(): Result {
+        val db = SparkborneDatabase.getInstance(applicationContext)
+        val telemetryRepo = TelemetryRepository(db.dailySnapshotDao())
+        val gameRepo = GameRepository(db.gameStateDao())
+        val today = LocalDate.now()
+
+        // 1. Instant local Health Connect pull (works offline & in background on Android 15+)
+        val hcReader = HealthConnectReader(applicationContext)
+        val hcStatus = hcReader.getStatus()
+        if (hcStatus.hasAnyReadPermission && hcStatus.hasBackgroundPermission) {
+            runCatching {
+                val readings = hcReader.readRange(today, today)
+                if (readings.isNotEmpty()) {
+                    val hcRes = telemetryRepo.syncLocalHealthConnect(readings)
+                    if (hcRes.updatedDays > 0) {
+                        val allSnaps = telemetryRepo.observeSnapshots().first()
+                        val trend = BodyweightTrendCalculator.calculate(allSnaps, today)
+                        gameRepo.applySyncedTelemetry(hcRes.snapshots, hcRes.deltas, trend)
+                    }
+                }
+            }
+        }
+
+        // 2. SparkyFitness cloud backup (Garmin + Liftosaur lifting & goals)
         val creds = CredentialsStore(applicationContext).load()
         if (creds.validate().isFailure) {
             return Result.success()
         }
 
-        val db = SparkborneDatabase.getInstance(applicationContext)
-        val telemetryRepo = TelemetryRepository(db.dailySnapshotDao())
-        val gameRepo = GameRepository(db.gameStateDao())
-
-        val today = LocalDate.now()
         val syncResult = telemetryRepo.syncRange(
             config = creds,
             startDate = today,

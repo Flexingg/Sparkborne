@@ -54,6 +54,8 @@ fun TelemetrySyncTabContent(
     onSelectSplash: (SplashStyleId) -> Unit,
     onReplaySplash: () -> Unit,
     onResetNewJourney: () -> Unit,
+    onRequestHealthConnectPermissions: () -> Unit = {},
+    onSyncHealthConnect: () -> Unit = {},
 ) {
     LazyColumn(
         modifier = Modifier
@@ -61,6 +63,56 @@ fun TelemetrySyncTabContent(
             .padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        item {
+            val hc = state.healthConnectStatus
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text(
+                        "Health Connect (Instant Local Sync)",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    val statusLine = when {
+                        !hc.isAvailable -> "Unavailable on this device"
+                        hc.hasAllPermissions -> "Connected · ${hc.grantedPermissions.size}/${hc.totalPermissions} permissions (Background ON)"
+                        hc.hasAnyReadPermission -> "Partially connected · ${hc.grantedPermissions.size}/${hc.totalPermissions} permissions"
+                        else -> "Not connected — tap below to grant local read access"
+                    }
+                    Text(
+                        statusLine,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontFamily = FontFamily.Monospace,
+                        color = if (hc.hasAnyReadPermission) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        "Reads Steps, Sleep, Hydration, Nutrition & Weight directly on-device with zero server wait. SparkyFitness stays your backup + Liftosaur Muscle XP source (zero double-counting).",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    state.healthConnectMessage?.let { msg ->
+                        Text(
+                            msg,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.tertiary,
+                        )
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(onClick = onRequestHealthConnectPermissions) {
+                            Text(if (hc.hasAllPermissions) "Manage HC Perms" else "Connect Health Connect")
+                        }
+                        if (hc.hasAnyReadPermission) {
+                            OutlinedButton(onClick = onSyncHealthConnect) {
+                                Text("Pull HC Now")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         item {
             ConnectionCard(
                 baseUrl = state.baseUrl,
