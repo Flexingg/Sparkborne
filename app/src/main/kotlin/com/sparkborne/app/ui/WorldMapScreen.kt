@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -220,8 +221,8 @@ fun WorldTabScreen(
     fun clampOffset(candidate: Offset, currentScale: Float): Offset {
         val scaledW = mapWidthPx * currentScale
         val scaledH = mapHeightPx * currentScale
-        val maxX = ((scaledW - viewportSize.width) / 2f).coerceAtLeast(160f)
-        val maxY = ((scaledH - viewportSize.height) / 2f).coerceAtLeast(220f)
+        val maxX = ((scaledW - viewportSize.width) / 2f + 120f).coerceAtLeast(180f)
+        val maxY = ((scaledH - viewportSize.height) / 2f + 160f).coerceAtLeast(240f)
         return Offset(
             x = candidate.x.coerceIn(-maxX, maxX),
             y = candidate.y.coerceIn(-maxY, maxY),
@@ -235,6 +236,7 @@ fun WorldTabScreen(
             x = (mapWidthPx / 2f - heroPxX) * targetScale,
             y = (mapHeightPx / 2f - heroPxY) * targetScale,
         )
+        scale = targetScale
         panOffset = clampOffset(centered, targetScale)
     }
 
@@ -251,18 +253,18 @@ fun WorldTabScreen(
             }
             .pointerInput(Unit) {
                 detectTransformGestures { _, pan, zoom, _ ->
-                    val nextScale = (scale * zoom).coerceIn(0.65f, 2.4f)
+                    val nextScale = (scale * zoom).coerceIn(0.55f, 2.4f)
                     val nextPan = clampOffset(panOffset + pan, nextScale)
                     scale = nextScale
                     panOffset = nextPan
                 }
             },
     ) {
-        // Transformed Stitched World Layer
+        // Transformed Stitched World Layer (requiredSize prevents Compose from clamping 1080dp to screen width!)
         Box(
             modifier = Modifier
                 .align(Alignment.Center)
-                .size(width = mapWidthDp, height = mapHeightDp)
+                .requiredSize(width = mapWidthDp, height = mapHeightDp)
                 .graphicsLayer {
                     scaleX = scale
                     scaleY = scale
@@ -270,7 +272,7 @@ fun WorldTabScreen(
                     translationY = panOffset.y
                 },
         ) {
-            // 1. Stitched 2x3 Pixel Art Map Tiles (FilterQuality.None = zero blur!)
+            // 1. Stitched 3x3 Pixel Art Map Tiles (FilterQuality.None = zero blur!)
             WorldMapTileGrid.tiles.forEach { spec ->
                 val bmp = tileBitmaps[spec] ?: return@forEach
                 Image(
@@ -287,11 +289,29 @@ fun WorldTabScreen(
                 )
             }
 
-            // 2. Active Travel Animated Path Line
-            state.activeTravel?.let { travel ->
-                val from = WorldCatalog.locationById(travel.fromLocationId)
-                val to = WorldCatalog.locationById(travel.toLocationId)
-                Canvas(modifier = Modifier.fillMaxSize()) {
+            // 2. Frontier Sea-Lanes & Active Travel Animated Path Line
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val frontierIds = setOf("loc_frostpeak_bastion", "loc_sunspire_oasis", "loc_ashen_sanctum")
+                val drawnPairs = mutableSetOf<Pair<String, String>>()
+                WorldCatalog.locations.forEach { loc ->
+                    loc.routes.forEach { route ->
+                        val pair = if (loc.id < route.destinationId) loc.id to route.destinationId else route.destinationId to loc.id
+                        if ((loc.id in frontierIds || route.destinationId in frontierIds) && drawnPairs.add(pair)) {
+                            val dest = WorldCatalog.locationById(route.destinationId)
+                            drawLine(
+                                color = Color(0xFFEBD9B4).copy(alpha = 0.55f),
+                                start = Offset(loc.mapX * size.width, loc.mapY * size.height),
+                                end = Offset(dest.mapX * size.width, dest.mapY * size.height),
+                                strokeWidth = 5f,
+                                pathEffect = PathEffect.dashPathEffect(floatArrayOf(12f, 10f)),
+                            )
+                        }
+                    }
+                }
+
+                state.activeTravel?.let { travel ->
+                    val from = WorldCatalog.locationById(travel.fromLocationId)
+                    val to = WorldCatalog.locationById(travel.toLocationId)
                     val start = Offset(from.mapX * size.width, from.mapY * size.height)
                     val end = Offset(to.mapX * size.width, to.mapY * size.height)
                     val current = Offset(heroWorldFrac.first * size.width, heroWorldFrac.second * size.height)
