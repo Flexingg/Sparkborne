@@ -25,6 +25,25 @@ object StepBankManager {
     }
 
     /**
+     * Reconciles live Android hardware pedometer steps (`totalPhoneStepsToday`) against the
+     * per-day high-water mark (`dailyCreditedSteps[date]`), depositing ONLY the net new steps
+     * into the Step Bank so Garmin/SparkyFitness syncs never double-count.
+     */
+    fun applyLivePhoneSteps(
+        state: GameState,
+        date: String,
+        totalPhoneStepsToday: Int,
+    ): Pair<GameState, Int> {
+        val prevCredited = state.dailyCreditedSteps[date] ?: 0
+        val netNew = (totalPhoneStepsToday - prevCredited).coerceAtLeast(0)
+        if (netNew <= 0) return state to 0
+
+        val (bankedState, accepted) = depositSteps(state, netNew)
+        val updatedWatermarks = bankedState.dailyCreditedSteps + (date to totalPhoneStepsToday)
+        return bankedState.copy(dailyCreditedSteps = updatedWatermarks) to accepted
+    }
+
+    /**
      * Spends banked steps toward the current locked Delve node (up to what's needed to unlock it).
      */
     fun spendBankedStepsOnDelve(state: GameState): Result<GameState> {

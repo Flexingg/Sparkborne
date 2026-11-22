@@ -140,13 +140,23 @@ object TelemetryRulesEngine {
             }
         }
 
-        // 5. Apply steps & contract progress to ActiveExpedition
+        // 5. Reconcile synced steps against dailyCreditedSteps (prevents double-counting with live phone pedometer!)
+        val prevCreditedSteps = state.dailyCreditedSteps[snapshot.date] ?: 0
+        val netSyncedStepsDelta = if (prevCreditedSteps > 0) {
+            (snapshot.steps - prevCreditedSteps).coerceAtLeast(0)
+        } else {
+            delta.stepsDelta
+        }
+        val reconciledDelta = delta.copy(stepsDelta = netSyncedStepsDelta)
+        val newCreditedHighWater = maxOf(prevCreditedSteps, snapshot.steps, prevCreditedSteps + netSyncedStepsDelta)
+
+        // Apply steps & contract progress to ActiveExpedition
         val updatedExpedition = state.activeExpedition?.let { exp ->
             if (exp.status == ExpeditionStatus.ACTIVE && snapshot.date >= exp.startedDate) {
                 applyTelemetryToExpedition(
                     expedition = exp,
                     snapshot = snapshot,
-                    delta = delta,
+                    delta = reconciledDelta,
                     isFirstTimeForDate = isFirstTimeForDate,
                     stepEfficiency = stance.stepEfficiencyMultiplier,
                     events = events,
@@ -157,6 +167,7 @@ object TelemetryRulesEngine {
         }
 
         val updatedHashes = state.processedDateHashes + (snapshot.date to snapshot.contentHash)
+        val updatedCreditedMap = state.dailyCreditedSteps + (snapshot.date to newCreditedHighWater)
 
         var nextState = state.copy(
             player = updatedPlayer,
@@ -165,12 +176,13 @@ object TelemetryRulesEngine {
             eggs = remainingEggs,
             activeExpedition = updatedExpedition,
             processedDateHashes = updatedHashes,
+            dailyCreditedSteps = updatedCreditedMap,
         )
 
-        // 6. Apply synced steps: overflow from active delve or idle steps bank cleanly into Step Bank!
+        // 6. Apply reconciled steps: overflow from active delve or idle steps bank cleanly into Step Bank!
         val isDelveActive = updatedExpedition?.status == ExpeditionStatus.ACTIVE
-        if (delta.stepsDelta > 0) {
-            val effectiveSteps = (delta.stepsDelta * stance.stepEfficiencyMultiplier).roundToInt()
+        if (reconciledDelta.stepsDelta > 0) {
+            val effectiveSteps = (reconciledDelta.stepsDelta * stance.stepEfficiencyMultiplier).roundToInt()
             if (isDelveActive) {
                 val prevNode = state.activeExpedition?.currentNode
                 val nextNode = updatedExpedition?.currentNode

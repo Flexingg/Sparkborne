@@ -60,4 +60,40 @@ class StepBankTest {
         assertTrue(state.activeExpedition!!.currentNode!!.isUnlocked)
         assertEquals(5_600, state.player.savedSteps)
     }
+
+    @Test
+    fun `live phone pedometer steps reconcile with Garmin syncs without double-counting`() {
+        var state = GameCatalog.initialGameState()
+        val date = "2026-11-22"
+
+        // 1. Live phone pedometer counts 3,000 steps instantaneously
+        val (afterPhone, addedPhone) = StepBankManager.applyLivePhoneSteps(state, date, 3_000)
+        state = afterPhone
+        assertEquals(3_000, addedPhone)
+        assertEquals(3_000, state.player.savedSteps)
+
+        // 2. Garmin syncs 2,800 steps (lower than phone) -> ZERO double-counting!
+        val garminLow = TelemetryNormalizer.normalize(
+            date = date,
+            dailySummary = null,
+            checkIn = CheckInMeasurementDto(entryDate = date, steps = 2_800.0),
+            sleepEntries = emptyList(),
+            syncedAtEpochMs = 2_000L,
+        )
+        val deltaLow = SnapshotIdempotency.computeDelta(null, garminLow)
+        state = TelemetryRulesEngine.applyTelemetry(state, garminLow, deltaLow, null).state
+        assertEquals(3_000, state.player.savedSteps)
+
+        // 3. Later, user goes on a watch-only run and Garmin syncs 5,500 steps -> ONLY +2,500 net new steps credited!
+        val garminHigh = TelemetryNormalizer.normalize(
+            date = date,
+            dailySummary = null,
+            checkIn = CheckInMeasurementDto(entryDate = date, steps = 5_500.0),
+            sleepEntries = emptyList(),
+            syncedAtEpochMs = 3_000L,
+        )
+        val deltaHigh = SnapshotIdempotency.computeDelta(garminLow, garminHigh)
+        state = TelemetryRulesEngine.applyTelemetry(state, garminHigh, deltaHigh, null).state
+        assertEquals(5_500, state.player.savedSteps)
+    }
 }

@@ -70,6 +70,9 @@ class SparkborneViewModel(application: Application) : AndroidViewModel(applicati
     private val telemetryRepository = TelemetryRepository(db.dailySnapshotDao())
     private val gameRepository = GameRepository(db.gameStateDao())
     private val appUpdater = AppUpdater(application)
+    private val liveStepTracker = com.sparkborne.app.data.LiveStepTracker(application) { date, totalToday ->
+        onLivePhoneStepsUpdated(date, totalToday)
+    }
 
     private val _uiState = MutableStateFlow(SparkborneUiState())
     val uiState: StateFlow<SparkborneUiState> = _uiState.asStateFlow()
@@ -110,7 +113,38 @@ class SparkborneViewModel(application: Application) : AndroidViewModel(applicati
             }
         }
 
+        // Start hardware step counter if permission already granted
+        liveStepTracker.start()
+
+        // Schedule 15-minute periodic background sync & quiet auto-sync on launch
+        com.sparkborne.app.data.SparkyBackgroundSyncWorker.schedule(application)
+        if (savedCreds.validate().isSuccess) {
+            syncDays(1)
+        }
+
         checkForUpdates(silent = true)
+    }
+
+    fun refreshLiveStepTracker() {
+        liveStepTracker.start()
+    }
+
+    private fun onLivePhoneStepsUpdated(date: String, totalPhoneStepsToday: Int) {
+        viewModelScope.launch {
+            gameRepository.updateState { state ->
+                val (updated, _) = com.sparkborne.game.engine.StepBankManager.applyLivePhoneSteps(
+                    state = state,
+                    date = date,
+                    totalPhoneStepsToday = totalPhoneStepsToday,
+                )
+                Result.success(updated)
+            }
+        }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        liveStepTracker.stop()
     }
 
     fun selectTab(tab: SparkborneTab) {

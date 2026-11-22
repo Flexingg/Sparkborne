@@ -166,6 +166,7 @@ data class GameState(
     val activeActivity: ActiveTownActivity? = null,
     val completedContractIds: Set<String> = emptySet(),
     val processedDateHashes: Map<String, String> = emptyMap(),
+    val dailyCreditedSteps: Map<String, Int> = emptyMap(),
     val introQuest: IntroQuestState = IntroQuestState(),
     val unlockedCodexIds: Set<String> = setOf("guide_welcome", "loc_emberhearth", "keeper_ember"),
     val unreadCodexIds: Set<String> = emptySet(),
