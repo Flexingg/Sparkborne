@@ -195,11 +195,13 @@ fun SparkborneRootScreen(viewModel: SparkborneViewModel) {
                         }
                     }
 
-                    // Live WalkScape Activity / Travel Micro-Bar inside the Top HUD
+                    // Live WalkScape Activity / Travel Ticker inside the Top HUD
                     val activeTravel = game.activeTravel
                     val activeActivity = game.activeActivity
                     if (activeTravel != null) {
                         val dest = WorldCatalog.locationById(activeTravel.toLocationId)
+                        val pct = (activeTravel.progressFraction * 100).toInt()
+                        val remaining = (activeTravel.stepsRequired - activeTravel.stepsWalked).coerceAtLeast(0)
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -207,13 +209,14 @@ fun SparkborneRootScreen(viewModel: SparkborneViewModel) {
                             horizontalArrangement = Arrangement.SpaceBetween,
                         ) {
                             Text(
-                                text = "→ Walking to ${dest.name}",
+                                text = "🥾 Walking → ${dest.name} ($pct%)",
                                 fontSize = 10.sp,
                                 fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Bold,
                                 color = colors.accentPrimary,
                             )
                             Text(
-                                text = "${activeTravel.stepsWalked}/${activeTravel.stepsRequired}",
+                                text = "$remaining left",
                                 fontSize = 10.sp,
                                 fontFamily = FontFamily.Monospace,
                                 color = colors.textPrimary,
@@ -230,6 +233,9 @@ fun SparkborneRootScreen(viewModel: SparkborneViewModel) {
                     } else if (activeActivity != null) {
                         val def = WorldCatalog.activityById(activeActivity.activityId)
                         if (def != null) {
+                            val frac = (activeActivity.stepsProgress.toFloat() / def.stepsPerAction.coerceAtLeast(1)).coerceIn(0f, 1f)
+                            val pct = (frac * 100).toInt()
+                            val remaining = (def.stepsPerAction - activeActivity.stepsProgress).coerceAtLeast(0)
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -237,22 +243,21 @@ fun SparkborneRootScreen(viewModel: SparkborneViewModel) {
                                 horizontalArrangement = Arrangement.SpaceBetween,
                             ) {
                                 Text(
-                                    text = "⛏ ${def.name} (x${activeActivity.completionsCount})",
+                                    text = "${skillEmojiFor(def.skillTag)} ${def.name} · x${activeActivity.completionsCount} ($pct%)",
                                     fontSize = 10.sp,
                                     fontFamily = FontFamily.Monospace,
+                                    fontWeight = FontWeight.Bold,
                                     color = colors.accentSecondary,
                                 )
                                 Text(
-                                    text = "${activeActivity.stepsProgress}/${def.stepsPerAction}",
+                                    text = "$remaining to drop",
                                     fontSize = 10.sp,
                                     fontFamily = FontFamily.Monospace,
-                                    color = colors.textPrimary,
+                                    color = colors.vitalityEmerald,
                                 )
                             }
                             LinearProgressIndicator(
-                                progress = {
-                                    (activeActivity.stepsProgress.toFloat() / def.stepsPerAction.coerceAtLeast(1)).coerceIn(0f, 1f)
-                                },
+                                progress = { frac },
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(top = 3.dp),

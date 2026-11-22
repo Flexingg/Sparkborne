@@ -2,9 +2,11 @@ package com.sparkborne.app.ui
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.runtime.getValue
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -17,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -108,20 +111,53 @@ fun DelveTabScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.Bottom,
                 ) {
-                    Column(modifier = Modifier.weight(1f)) {
+                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text(
                             text = active?.contract?.title ?: "Sparkborne Wilds",
                             style = MaterialTheme.typography.titleMedium,
                             color = colors.accentPrimary,
                             fontWeight = FontWeight.Bold,
                         )
-                        Text(
-                            text = active?.let {
-                                "Node ${it.currentNodeIndex + 1}/${it.nodes.size} · ${it.contract.difficulty.displayName}"
-                            } ?: "Select a roguelike contract to begin your delve",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = colors.textPrimary,
-                        )
+                        if (active != null) {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                active.nodes.forEach { n ->
+                                    val isCur = n.index == active.currentNodeIndex
+                                    val badgeColor = when {
+                                        n.cleared -> colors.vitalityEmerald
+                                        isCur -> colors.accentPrimary
+                                        else -> colors.pixelBorderBright
+                                    }
+                                    Box(
+                                        modifier = Modifier
+                                            .size(if (isCur) 26.dp else 20.dp)
+                                            .clip(androidx.compose.foundation.shape.CircleShape)
+                                            .background(colors.obsidianBg.copy(alpha = 0.9f))
+                                            .border(1.5.dp, badgeColor, androidx.compose.foundation.shape.CircleShape),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Text(
+                                            text = when (n.type) {
+                                                com.sparkborne.game.model.DelveNodeType.COMBAT -> "⚔"
+                                                com.sparkborne.game.model.DelveNodeType.FORGE_SHRINE -> "⚒"
+                                                com.sparkborne.game.model.DelveNodeType.REST_CAMP -> "🔥"
+                                                com.sparkborne.game.model.DelveNodeType.TREASURE -> "💰"
+                                                com.sparkborne.game.model.DelveNodeType.BOSS -> "💀"
+                                            },
+                                            style = MaterialTheme.typography.labelSmall,
+                                        )
+                                    }
+                                }
+                            }
+                        } else {
+                            Text(
+                                text = "Select a roguelike contract to begin your delve",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = colors.textPrimary,
+                            )
+                        }
                     }
                     state.activeMonster?.let { mon ->
                         PixelSprite(
@@ -350,12 +386,27 @@ private fun CombatEncounterArena(
     val colors = RpgTheme.colors
     val heroLunge = remember { Animatable(0f) }
     val enemyShake = remember { Animatable(0f) }
+    val hitFlashAlpha = remember { Animatable(0f) }
+
+    // Continuous idle breathing/bobbing animation so the battle stage feels alive!
+    val idleTransition = androidx.compose.animation.core.rememberInfiniteTransition(label = "combat_idle")
+    val idleBob by idleTransition.animateFloat(
+        initialValue = -3f,
+        targetValue = 3f,
+        animationSpec = androidx.compose.animation.core.infiniteRepeatable(
+            animation = tween(durationMillis = 1100),
+            repeatMode = androidx.compose.animation.core.RepeatMode.Reverse,
+        ),
+        label = "idle_bob",
+    )
 
     LaunchedEffect(combat.turnNumber) {
         if (combat.turnNumber > 1) {
-            heroLunge.snapTo(14f)
-            heroLunge.animateTo(0f, tween(160))
-            enemyShake.snapTo(12f)
+            heroLunge.snapTo(18f)
+            heroLunge.animateTo(0f, tween(170))
+            hitFlashAlpha.snapTo(0.45f)
+            hitFlashAlpha.animateTo(0f, tween(260))
+            enemyShake.snapTo(14f)
             enemyShake.animateTo(-10f, tween(55))
             enemyShake.animateTo(6f, tween(55))
             enemyShake.animateTo(0f, tween(55))
@@ -363,115 +414,146 @@ private fun CombatEncounterArena(
     }
 
     RpgPanel(borderColor = colors.crimsonHp, containerColor = colors.panelElevated) {
-        Text(
-            "TURN ${combat.turnNumber} · ${combat.enemy.name.uppercase()}",
-            style = MaterialTheme.typography.labelLarge,
-            color = colors.accentPrimary,
-            fontFamily = FontFamily.Monospace,
-            fontWeight = FontWeight.Bold,
-        )
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(
+                "⚔ TURN ${combat.turnNumber} · ${combat.enemy.name.uppercase()}",
+                style = MaterialTheme.typography.labelLarge,
+                color = colors.accentPrimary,
+                fontFamily = FontFamily.Monospace,
+                fontWeight = FontWeight.Bold,
+            )
+            Text(
+                "SHIELD ${combat.playerShield}",
+                style = MaterialTheme.typography.labelSmall,
+                fontFamily = FontFamily.Monospace,
+                color = colors.accentSecondary,
+                fontWeight = FontWeight.Bold,
+            )
+        }
 
-        // Pixel Combat Stage: Hero lunge + Companion vs Shaking Boss/Enemy
+        // Visual Dungeon Battle Stage with breathing sprites, shadow floor, lunge & crimson hit flash!
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(8.dp))
-                .background(colors.obsidianBg)
-                .border(1.dp, colors.pixelBorder, RoundedCornerShape(8.dp))
-                .padding(12.dp),
+                .height(148.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(
+                    Brush.verticalGradient(
+                        listOf(Color(0xFF141824), Color(0xFF0A0D14)),
+                    ),
+                )
+                .border(2.dp, colors.pixelBorderBright, RoundedCornerShape(10.dp))
+                .padding(horizontal = 14.dp, vertical = 12.dp),
         ) {
+            // Subtle dungeon floor horizon line
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .height(26.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(colors.panelSurface.copy(alpha = 0.65f)),
+            )
+
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(bottom = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
+                verticalAlignment = Alignment.Bottom,
             ) {
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalAlignment = Alignment.Bottom,
-                    modifier = Modifier.offset { IntOffset(heroLunge.value.roundToInt(), 0) },
+                    modifier = Modifier.offset {
+                        IntOffset(heroLunge.value.roundToInt(), idleBob.roundToInt())
+                    },
                 ) {
                     PixelSprite(
                         drawableRes = R.drawable.pixel_hero_knight,
                         contentDescription = "Hero",
-                        size = 72.dp,
+                        size = 78.dp,
                         borderColor = colors.accentPrimary,
                     )
                     state.activeMonster?.let { mon ->
                         PixelSprite(
                             drawableRes = monsterDrawableFor(mon.affinity),
                             contentDescription = mon.name,
-                            size = 48.dp,
+                            size = 50.dp,
                             borderColor = colors.accentSecondary,
                         )
                     }
                 }
-                Text("VS", fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, color = colors.crimsonHp)
-                PixelSprite(
-                    drawableRes = R.drawable.pixel_boss_encounter,
-                    contentDescription = combat.enemy.name,
-                    size = 76.dp,
-                    borderColor = colors.crimsonHp,
-                    modifier = Modifier.offset { IntOffset(enemyShake.value.roundToInt(), 0) },
-                )
-            }
-        }
 
-        // Latest turn floating callout banner
-        val latestEvent = combat.combatLog.lastOrNull()
-        AnimatedVisibility(
-            visible = latestEvent != null,
-            enter = fadeIn(tween(180)),
-            exit = fadeOut(tween(180)),
-        ) {
-            if (latestEvent != null) {
+                Box(
+                    modifier = Modifier.offset {
+                        IntOffset(enemyShake.value.roundToInt(), (-idleBob).roundToInt())
+                    },
+                ) {
+                    PixelSprite(
+                        drawableRes = R.drawable.pixel_boss_encounter,
+                        contentDescription = combat.enemy.name,
+                        size = 86.dp,
+                        borderColor = colors.crimsonHp,
+                    )
+                    if (hitFlashAlpha.value > 0.01f) {
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(colors.crimsonHp.copy(alpha = hitFlashAlpha.value)),
+                        )
+                    }
+                }
+            }
+
+            // Floating Turn Callout Pill at Top-Center of Battle Stage
+            combat.combatLog.lastOrNull()?.let { latest ->
                 Surface(
                     shape = RoundedCornerShape(6.dp),
-                    color = colors.obsidianBg,
-                    modifier = Modifier.fillMaxWidth(),
+                    color = colors.obsidianBg.copy(alpha = 0.90f),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, colors.accentPrimary),
+                    modifier = Modifier.align(Alignment.TopCenter),
                 ) {
                     Text(
-                        text = latestEvent,
+                        text = latest,
                         style = MaterialTheme.typography.labelSmall,
                         fontFamily = FontFamily.Monospace,
                         color = colors.accentPrimary,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
                     )
                 }
             }
         }
 
         RpgProgressBar(
-            label = combat.enemy.name,
+            label = "${combat.enemy.name} (ATK ${combat.enemy.attack} · DEF ${combat.enemy.defense})",
             valueText = "${combat.enemy.currentHp} / ${combat.enemy.maxHp} HP",
             progress = combat.enemy.currentHp.toFloat() / combat.enemy.maxHp.coerceAtLeast(1),
             fillColor = colors.crimsonHp,
-        )
-        Text(
-            "Shield: ${combat.playerShield} · Enemy ATK ${combat.enemy.attack} · DEF ${combat.enemy.defense}",
-            style = MaterialTheme.typography.labelSmall,
-            color = colors.textMuted,
-            fontFamily = FontFamily.Monospace,
+            barHeight = 11.dp,
         )
 
+        // Crisp 2x2 Tactical Command Deck
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
             RpgActionButton(
-                text = "STRIKE",
+                text = "⚔ STRIKE",
                 onClick = { onAction(CombatAction.Strike) },
                 modifier = Modifier.weight(1f),
             )
-            OutlinedButton(
+            RpgActionButton(
+                text = "🛡 GUARD",
                 onClick = { onAction(CombatAction.Guard) },
+                containerColor = colors.ironSteel,
                 modifier = Modifier.weight(1f),
-            ) {
-                Text("GUARD", fontFamily = FontFamily.Monospace)
-            }
+            )
         }
 
         RpgActionButton(
             text = if (combat.monsterSkillCooldown == 0) {
-                "COMPANION · ${state.activeMonster?.name?.uppercase() ?: "NONE"}"
+                "🐉 ${state.activeMonster?.name?.uppercase() ?: "BEAST"} SKILL"
             } else {
-                "COMPANION COOLDOWN (${combat.monsterSkillCooldown}T)"
+                "🐉 COMPANION COOLDOWN (${combat.monsterSkillCooldown}T)"
             },
             onClick = { onAction(CombatAction.MonsterSkill) },
             enabled = state.activeMonster != null && combat.monsterSkillCooldown == 0,
@@ -481,13 +563,14 @@ private fun CombatEncounterArena(
 
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
             state.player.attunedSpellIds.mapNotNull(GameCatalog::spellById).forEach { spell ->
-                OutlinedButton(
+                val canCast = combat.playerMana >= spell.manaCost
+                RpgActionButton(
+                    text = "✨ ${spell.name} (${spell.manaCost}m)",
                     onClick = { onAction(CombatAction.CastSpell(spell.id)) },
-                    enabled = combat.playerMana >= spell.manaCost,
+                    enabled = canCast,
+                    containerColor = colors.arcaneMana,
                     modifier = Modifier.weight(1f),
-                ) {
-                    Text("${spell.name} (${spell.manaCost}m)", style = MaterialTheme.typography.labelSmall)
-                }
+                )
             }
         }
     }

@@ -4,12 +4,13 @@ import com.sparkborne.game.model.RegionElement
 import com.sparkborne.game.model.ShopItemType
 import com.sparkborne.game.model.TownActivity
 import com.sparkborne.game.model.TownShopListing
+import com.sparkborne.game.model.TownShopkeeper
 import com.sparkborne.game.model.TravelRoute
 import com.sparkborne.game.model.WorldLocation
 
 /**
  * Deterministic World Map of Sparkborne: 6 elemental cities & towns connected by step-trails,
- * each with unique repeatable WalkScape-style activities, regional shops, and local contracts.
+ * each with its own shopkeeper (portrait & lore), repeatable WalkScape activities, regional shops, and local contracts.
  */
 object WorldCatalog {
 
@@ -23,6 +24,12 @@ object WorldCatalog {
             element = RegionElement.FIRE,
             mapX = 0.22f,
             mapY = 0.78f,
+            shopkeeper = TownShopkeeper(
+                id = "shopkeeper_ember",
+                name = "Bram Ironbrow",
+                title = "Master Forgekeeper",
+                loreQuote = "\"Steel remembers the sweat that tempered it. Bring me iron and coin, and I'll arm you for the wilds.\"",
+            ),
             routes = listOf(
                 TravelRoute("loc_verdant_crossing", 3500),
                 TravelRoute("loc_tidebreak_harbor", 4500),
@@ -34,7 +41,7 @@ object WorldCatalog {
                     locationId = "loc_emberhearth",
                     name = "Mine Basalt Seam",
                     skillTag = "Mining",
-                    description = "Chip iron ore from the warm volcanic outcrops outside town.",
+                    description = "Chip raw iron ore from warm volcanic outcrops along the ridge.",
                     stepsPerAction = 1000,
                     rewardGold = 6,
                     rewardIron = 4,
@@ -45,7 +52,7 @@ object WorldCatalog {
                     locationId = "loc_emberhearth",
                     name = "Tend Forge Bellows",
                     skillTag = "Smithing",
-                    description = "Stoke the outpost furnace for coin and ember dust.",
+                    description = "Stoke Bram's outpost furnace for steady gold and ember dust.",
                     stepsPerAction = 1200,
                     rewardGold = 12,
                     rewardShards = 1,
@@ -92,6 +99,12 @@ object WorldCatalog {
             element = RegionElement.PLANT,
             mapX = 0.28f,
             mapY = 0.44f,
+            shopkeeper = TownShopkeeper(
+                id = "shopkeeper_verdant",
+                name = "Sylva Briarwood",
+                title = "Canopy Herbalist",
+                loreQuote = "\"Walk softly beneath the ironwoods, traveler — the old roots trade rare favors for honest footsteps.\"",
+            ),
             routes = listOf(
                 TravelRoute("loc_emberhearth", 3500),
                 TravelRoute("loc_mirefen_village", 4000),
@@ -104,7 +117,7 @@ object WorldCatalog {
                     locationId = "loc_verdant_crossing",
                     name = "Forage Moonleaf Herbs",
                     skillTag = "Foraging",
-                    description = "Gather restorative canopy flora while walking forest trails.",
+                    description = "Gather restorative canopy flora while walking mossy forest trails.",
                     stepsPerAction = 900,
                     rewardGold = 10,
                     rewardShards = 1,
@@ -116,7 +129,7 @@ object WorldCatalog {
                     locationId = "loc_verdant_crossing",
                     name = "Harvest Ironwood",
                     skillTag = "Woodcutting",
-                    description = "Fell dense ironwood boughs traded for gold and ore.",
+                    description = "Fell dense ironwood boughs prized by rangers and smiths alike.",
                     stepsPerAction = 1100,
                     rewardGold = 14,
                     rewardIron = 3,
@@ -154,6 +167,12 @@ object WorldCatalog {
             element = RegionElement.WATER,
             mapX = 0.72f,
             mapY = 0.80f,
+            shopkeeper = TownShopkeeper(
+                id = "shopkeeper_tidebreak",
+                name = "Capt. Orin Saltwake",
+                title = "Harbor Quartermaster",
+                loreQuote = "\"Tides rise, tides fall. Keep your flask full, your compass true, and your boots moving.\"",
+            ),
             routes = listOf(
                 TravelRoute("loc_emberhearth", 4500),
                 TravelRoute("loc_mirefen_village", 5000),
@@ -176,7 +195,7 @@ object WorldCatalog {
                     locationId = "loc_tidebreak_harbor",
                     name = "Pearl Reef Diving",
                     skillTag = "Diving",
-                    description = "Search tidepools for arcane shards and sunken iron.",
+                    description = "Search tidepools for arcane shards and sunken ship iron.",
                     stepsPerAction = 1400,
                     rewardGold = 10,
                     rewardShards = 3,
@@ -213,6 +232,12 @@ object WorldCatalog {
             element = RegionElement.POISON,
             mapX = 0.68f,
             mapY = 0.48f,
+            shopkeeper = TownShopkeeper(
+                id = "shopkeeper_mirefen",
+                name = "Vexis Bogbrew",
+                title = "Venom Apothecary",
+                loreQuote = "\"One drop of mire-dew sharpens the blade; two drops wake the sleeping egg. Care to barter?\"",
+            ),
             routes = listOf(
                 TravelRoute("loc_verdant_crossing", 4000),
                 TravelRoute("loc_tidebreak_harbor", 5000),
@@ -225,7 +250,7 @@ object WorldCatalog {
                     locationId = "loc_mirefen_village",
                     name = "Distill Venom Extract",
                     skillTag = "Alchemy",
-                    description = "Refine glowing bog spores into high-value ember shards.",
+                    description = "Refine glowing bog spores into potent shards and coin.",
                     stepsPerAction = 1200,
                     rewardGold = 12,
                     rewardShards = 3,
@@ -236,7 +261,7 @@ object WorldCatalog {
                     locationId = "loc_mirefen_village",
                     name = "Dredge Sunken Relics",
                     skillTag = "Salvage",
-                    description = "Pull ancient iron plates from the peat bogs.",
+                    description = "Pull ancient iron plates out of the peat bogs.",
                     stepsPerAction = 1300,
                     rewardGold = 14,
                     rewardIron = 6,
@@ -273,6 +298,12 @@ object WorldCatalog {
             element = RegionElement.LIGHTNING,
             mapX = 0.25f,
             mapY = 0.16f,
+            shopkeeper = TownShopkeeper(
+                id = "shopkeeper_stormspire",
+                name = "Archivist Lyra Volt",
+                title = "Conduit Weaver",
+                loreQuote = "\"Lightning favors the relentless. Climb the frozen peaks, and the storm will answer your call.\"",
+            ),
             routes = listOf(
                 TravelRoute("loc_verdant_crossing", 5500),
                 TravelRoute("loc_obsidian_crag", 5000),
@@ -284,7 +315,7 @@ object WorldCatalog {
                     locationId = "loc_stormspire_citadel",
                     name = "Harvest Volt Crystals",
                     skillTag = "Runecrafting",
-                    description = "Capture lightning-charged shards along the spire walkways.",
+                    description = "Capture lightning-charged shards along the high spire walkways.",
                     stepsPerAction = 1500,
                     rewardGold = 18,
                     rewardShards = 4,
@@ -320,6 +351,12 @@ object WorldCatalog {
             element = RegionElement.VOID,
             mapX = 0.74f,
             mapY = 0.18f,
+            shopkeeper = TownShopkeeper(
+                id = "shopkeeper_obsidian",
+                name = "Kaelen the Ash-Forged",
+                title = "Vault Warden",
+                loreQuote = "\"Only those who carried iron through the dark earn what lies in this vault. Show me your proof.\"",
+            ),
             routes = listOf(
                 TravelRoute("loc_stormspire_citadel", 5000),
                 TravelRoute("loc_mirefen_village", 6000),
@@ -331,7 +368,7 @@ object WorldCatalog {
                     locationId = "loc_obsidian_crag",
                     name = "Abyssal Seam Excavation",
                     skillTag = "Mining",
-                    description = "Extract dense star-iron and void shards from the caldera.",
+                    description = "Extract dense star-iron and void shards from the volcanic caldera.",
                     stepsPerAction = 1600,
                     rewardGold = 24,
                     rewardIron = 8,

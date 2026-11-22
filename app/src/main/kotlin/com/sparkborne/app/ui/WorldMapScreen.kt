@@ -115,6 +115,48 @@ private fun elementColor(element: RegionElement): Color = when (element) {
     RegionElement.VOID -> Color(0xFFA78BFA)
 }
 
+@DrawableRes
+internal fun shopkeeperDrawableFor(shopkeeperId: String): Int = when (shopkeeperId) {
+    "shopkeeper_ember" -> R.drawable.shopkeeper_ember
+    "shopkeeper_verdant" -> R.drawable.shopkeeper_verdant
+    "shopkeeper_tidebreak" -> R.drawable.shopkeeper_tidebreak
+    "shopkeeper_mirefen" -> R.drawable.shopkeeper_mirefen
+    "shopkeeper_stormspire" -> R.drawable.shopkeeper_stormspire
+    "shopkeeper_obsidian" -> R.drawable.shopkeeper_obsidian
+    else -> R.drawable.shopkeeper_ember
+}
+
+internal fun skillEmojiFor(skillTag: String): String = when (skillTag.lowercase()) {
+    "mining" -> "⛏"
+    "smithing" -> "🔨"
+    "foraging" -> "🌿"
+    "woodcutting" -> "🪓"
+    "fishing" -> "🎣"
+    "diving" -> "🫧"
+    "alchemy" -> "🧪"
+    "salvage" -> "⚓"
+    "runecrafting" -> "⚡"
+    else -> "✦"
+}
+
+@Composable
+private fun ActivityDropChip(text: String, color: Color) {
+    Surface(
+        shape = RoundedCornerShape(5.dp),
+        color = RpgTheme.colors.obsidianBg,
+        border = BorderStroke(1.dp, color.copy(alpha = 0.6f)),
+    ) {
+        Text(
+            text = text,
+            fontSize = 10.sp,
+            fontFamily = FontFamily.Monospace,
+            fontWeight = FontWeight.Bold,
+            color = color,
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+        )
+    }
+}
+
 /**
  * Full-screen, edge-to-edge WalkScape-style stitched pixel-art World Map with:
  * - Pinch-to-zoom (0.65x Realm Overview -> 2.4x Close-Up Town View) & smooth 2D panning
@@ -639,38 +681,141 @@ private fun TownSheetContent(
                 TownDrawerSection.ACTIVITIES -> {
                     items(town.activities, key = { it.id }) { act ->
                         val isRunning = state.activeActivity?.activityId == act.id
-                        RpgPanel(borderColor = if (isRunning) colors.accentSecondary else colors.pixelBorder) {
+                        val activeProgress = if (isRunning) state.activeActivity!!.stepsProgress else 0
+                        val completions = if (isRunning) state.activeActivity!!.completionsCount else 0
+                        val stepsLeft = (act.stepsPerAction - activeProgress).coerceAtLeast(0)
+                        val skillIcon = skillEmojiFor(act.skillTag)
+
+                        RpgPanel(
+                            borderColor = if (isRunning) colors.accentSecondary else colors.pixelBorderBright,
+                            containerColor = if (isRunning) colors.panelElevated else colors.panelSurface,
+                        ) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text("${act.name} · ${act.skillTag}", fontWeight = FontWeight.Bold)
+                                // Skill Emblem Tile
+                                Box(
+                                    modifier = Modifier
+                                        .size(44.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(colors.obsidianBg)
+                                        .border(
+                                            width = 1.5.dp,
+                                            color = if (isRunning) colors.accentSecondary else elemColor,
+                                            shape = RoundedCornerShape(8.dp),
+                                        ),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Text(skillIcon, fontSize = 20.sp)
+                                }
+
+                                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Text(act.name, fontWeight = FontWeight.Bold, color = colors.textPrimary)
+                                        Text(
+                                            text = if (isRunning) "x$completions DONE" else act.skillTag.uppercase(),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontFamily = FontFamily.Monospace,
+                                            color = if (isRunning) colors.vitalityEmerald else elemColor,
+                                            fontWeight = FontWeight.Bold,
+                                        )
+                                    }
                                     Text(act.description, style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
-                                    Text(
-                                        "${act.stepsPerAction} steps → +${act.rewardGold}g +${act.rewardIron}fe +${act.rewardShards}sh",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        fontFamily = FontFamily.Monospace,
-                                        color = colors.vitalityEmerald,
-                                    )
                                 }
-                                if (isRunning) {
-                                    OutlinedButton(onClick = onStopActivity) { Text("Stop") }
-                                } else {
-                                    RpgActionButton(
-                                        text = "START",
-                                        onClick = { onStartActivity(act.id) },
-                                        enabled = isHere && state.activeTravel == null,
-                                        containerColor = colors.accentSecondary,
-                                    )
+                            }
+
+                            // Drop Preview Chips
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                if (act.rewardGold > 0) ActivityDropChip("+${act.rewardGold}g", colors.accentPrimary)
+                                if (act.rewardIron > 0) ActivityDropChip("+${act.rewardIron}fe", colors.ironSteel)
+                                if (act.rewardShards > 0) ActivityDropChip("+${act.rewardShards}sh", colors.arcaneMana)
+                                ActivityDropChip("+${act.rewardXp} XP", colors.vitalityEmerald)
+                                if (act.rewardMonsterXp > 0) ActivityDropChip("+${act.rewardMonsterXp} Pet", colors.accentSecondary)
+                            }
+
+                            if (isRunning) {
+                                RpgProgressBar(
+                                    label = "Next Drop ($stepsLeft steps left)",
+                                    valueText = "$activeProgress / ${act.stepsPerAction}",
+                                    progress = activeProgress.toFloat() / act.stepsPerAction.coerceAtLeast(1),
+                                    fillColor = colors.accentSecondary,
+                                    barHeight = 9.dp,
+                                )
+                                OutlinedButton(onClick = onStopActivity, modifier = Modifier.fillMaxWidth()) {
+                                    Text("Stop Activity", fontFamily = FontFamily.Monospace)
                                 }
+                            } else {
+                                RpgActionButton(
+                                    text = "START ${act.skillTag.uppercase()} (${act.stepsPerAction} STEPS/CYCLE)",
+                                    onClick = { onStartActivity(act.id) },
+                                    enabled = isHere && state.activeTravel == null,
+                                    containerColor = colors.accentSecondary,
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
                             }
                         }
                     }
                 }
 
                 TownDrawerSection.SHOP -> {
+                    // Shopkeeper Portrait + Lore Dialogue Card!
+                    item {
+                        val keeper = town.shopkeeper
+                        RpgPanel(
+                            borderColor = elemColor,
+                            containerColor = colors.panelElevated,
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                PixelSprite(
+                                    drawableRes = shopkeeperDrawableFor(keeper.id),
+                                    contentDescription = keeper.name,
+                                    size = 64.dp,
+                                    borderColor = elemColor,
+                                )
+                                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Text(
+                                        text = keeper.name,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = elemColor,
+                                    )
+                                    Text(
+                                        text = keeper.title.uppercase(),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontFamily = FontFamily.Monospace,
+                                        color = colors.textMuted,
+                                    )
+                                    Surface(
+                                        shape = RoundedCornerShape(6.dp),
+                                        color = Color(0xFF221D16),
+                                        border = BorderStroke(1.dp, Color(0xFF6B4423)),
+                                    ) {
+                                        Text(
+                                            text = keeper.loreQuote,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            fontFamily = FontFamily.Serif,
+                                            color = Color(0xFFF0D4A2),
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     items(town.shopListings, key = { it.id }) { listing ->
                         val costParts = buildList {
                             if (listing.goldCost > 0) add("${listing.goldCost}g")

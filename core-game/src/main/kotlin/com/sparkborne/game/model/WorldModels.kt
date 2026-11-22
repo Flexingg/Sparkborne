@@ -56,6 +56,14 @@ data class TownShopListing(
 )
 
 @Serializable
+data class TownShopkeeper(
+    val id: String,
+    val name: String,
+    val title: String,
+    val loreQuote: String,
+)
+
+@Serializable
 data class WorldLocation(
     val id: String,
     val name: String,
@@ -63,6 +71,7 @@ data class WorldLocation(
     val element: RegionElement,
     val mapX: Float, // 0.0..1.0 normalized map coordinate
     val mapY: Float, // 0.0..1.0 normalized map coordinate
+    val shopkeeper: TownShopkeeper,
     val routes: List<TravelRoute>,
     val contractIds: List<String>,
     val activities: List<TownActivity>,
