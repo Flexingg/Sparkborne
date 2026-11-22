@@ -160,7 +160,7 @@ fun SparkborneRootScreen(viewModel: SparkborneViewModel) {
                                 size = 36.dp,
                                 borderColor = colors.accentPrimary,
                             )
-                            Column {
+                            Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                                 Text(
                                     text = "LV.${game.player.level} · ${WorldCatalog.locationById(game.currentLocationId).name.substringBefore(" ")}",
                                     fontFamily = FontFamily.Monospace,
@@ -168,11 +168,12 @@ fun SparkborneRootScreen(viewModel: SparkborneViewModel) {
                                     fontWeight = FontWeight.ExtraBold,
                                     color = colors.accentPrimary,
                                 )
-                                Text(
-                                    text = "${game.player.gold}g · ${game.player.ironOre}fe · ${game.player.emberShards}sh",
-                                    fontFamily = FontFamily.Monospace,
-                                    fontSize = 10.sp,
-                                    color = colors.textMuted,
+                                com.sparkborne.app.ui.components.RpgCurrencyRow(
+                                    gold = game.player.gold,
+                                    iron = game.player.ironOre,
+                                    shards = game.player.emberShards,
+                                    showZeros = true,
+                                    compact = true,
                                 )
                             }
                         }

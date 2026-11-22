@@ -210,12 +210,17 @@ fun DelveTabScreen(
                         )
                     }
                     Text(contract.description, style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        RpgStatChip("GOLD", "${contract.baseRewardGold}", colors.accentPrimary)
-                        RpgStatChip("SHARDS", "${contract.baseRewardShards}", colors.arcaneMana)
-                        RpgStatChip("IRON", "${contract.baseRewardIron}", colors.ironSteel)
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        com.sparkborne.app.ui.components.RpgCurrencyRow(
+                            gold = contract.baseRewardGold,
+                            iron = contract.baseRewardIron,
+                            shards = contract.baseRewardShards,
+                        )
                         if (contract.grantsEggOnClear) {
-                            RpgStatChip("BONUS", "EGG", colors.vitalityEmerald)
+                            RpgStatChip("BONUS", "🥚 EGG", colors.vitalityEmerald)
                         }
                     }
                     RpgActionButton(
@@ -348,10 +353,25 @@ private fun ActiveExpeditionHeader(
             progress = exp.runPlayerMana.toFloat() / exp.runPlayerMaxMana.coerceAtLeast(1),
             fillColor = colors.arcaneMana,
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            RpgStatChip("AT RISK GOLD", "${exp.unbankedLoot.gold}", colors.accentPrimary, Modifier.weight(1f))
-            RpgStatChip("SHARDS", "${exp.unbankedLoot.emberShards}", colors.arcaneMana, Modifier.weight(1f))
-            RpgStatChip("IRON", "${exp.unbankedLoot.ironOre}", colors.ironSteel, Modifier.weight(1f))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                "UNBANKED LOOT (AT RISK)",
+                style = MaterialTheme.typography.labelSmall,
+                fontFamily = FontFamily.Monospace,
+                color = colors.crimsonHp,
+                fontWeight = FontWeight.Bold,
+            )
+            com.sparkborne.app.ui.components.RpgCurrencyRow(
+                gold = exp.unbankedLoot.gold,
+                iron = exp.unbankedLoot.ironOre,
+                shards = exp.unbankedLoot.emberShards,
+                showZeros = true,
+                compact = true,
+            )
         }
         Text(
             "Deadline ${exp.deadlineDate} · Steps ${exp.progress.totalStepsLogged}/${exp.contract.requirement.minTotalSteps} · " +
@@ -573,139 +593,5 @@ private fun CombatEncounterArena(
                 )
             }
         }
-    }
-}
-
-@Composable
-fun MonstersTabScreen(
-    state: GameState,
-    errorMessage: String?,
-    onSelectActive: (String) -> Unit,
-    onEvolve: (String) -> Unit,
-) {
-    val colors = RpgTheme.colors
-
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 14.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        errorMessage?.let { err ->
-            item {
-                RpgPanel(borderColor = colors.crimsonHp) {
-                    Text(err, color = colors.crimsonHp, style = MaterialTheme.typography.bodySmall)
-                }
-            }
-        }
-
-        item {
-            Text("COMPANION SANCTUARY", style = MaterialTheme.typography.labelLarge, color = colors.accentPrimary, fontFamily = FontFamily.Monospace)
-        }
-        items(state.monsters, key = { it.id }) { mon ->
-            val isActive = mon.id == state.activeMonster?.id
-            RpgPanel(borderColor = if (isActive) colors.accentPrimary else colors.pixelBorder) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    PixelSprite(
-                        drawableRes = monsterDrawableFor(mon.affinity),
-                        contentDescription = mon.name,
-                        size = 76.dp,
-                        borderColor = if (isActive) colors.accentPrimary else colors.pixelBorderBright,
-                    )
-                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(
-                            "${mon.name} · Lv.${mon.level}",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                        )
-                        Text(
-                            "${mon.stage.displayName} · ${mon.affinity.displayName}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = colors.accentPrimary,
-                            fontFamily = FontFamily.Monospace,
-                        )
-                        Text(
-                            "ATK ${mon.baseAttack} · DEF ${mon.baseDefense} · XP ${mon.xp}/${mon.stage.requiredXpToEvolve ?: "MAX"}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = colors.textMuted,
-                        )
-                    }
-                }
-                Text(
-                    "Duo Synergy (${mon.affinity.synergyTitle}): ${mon.affinity.synergyDescription}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = colors.accentSecondary,
-                )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = { onSelectActive(mon.id) }, enabled = !isActive) {
-                        Text(if (isActive) "Active Partner" else "Set Active")
-                    }
-                    if (mon.canEvolve) {
-                        RpgActionButton(text = "EVOLVE!", onClick = { onEvolve(mon.id) })
-                    }
-                }
-            }
-        }
-
-        item {
-            Text("EGG INCUBATOR (SLEEP + HYDRATION)", style = MaterialTheme.typography.labelLarge, color = colors.vitalityEmerald, fontFamily = FontFamily.Monospace)
-        }
-        if (state.eggs.isEmpty()) {
-            item {
-                RpgPanel {
-                    Text(
-                        "No eggs incubating. Clear an egg-bearing contract to earn a new Monster Egg.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = colors.textMuted,
-                    )
-                }
-            }
-        } else {
-            items(state.eggs, key = { it.id }) { egg ->
-                RpgPanel(borderColor = colors.vitalityEmerald) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        PixelSprite(
-                            drawableRes = R.drawable.pixel_egg_incubator,
-                            contentDescription = egg.name,
-                            size = 72.dp,
-                            borderColor = colors.vitalityEmerald,
-                        )
-                        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text(egg.name, fontWeight = FontWeight.Bold)
-                            Text(
-                                "Projected Affinity: ${egg.macroProfile.dominantAffinity().displayName}",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = colors.accentPrimary,
-                                fontFamily = FontFamily.Monospace,
-                            )
-                            RpgProgressBar(
-                                label = "Sleep Warmth",
-                                valueText = "${egg.incubatedSleepMinutes}/${egg.requiredSleepMinutes}m",
-                                progress = egg.incubatedSleepMinutes.toFloat() / egg.requiredSleepMinutes.coerceAtLeast(1),
-                                fillColor = colors.vitalityEmerald,
-                                barHeight = 8.dp,
-                            )
-                            RpgProgressBar(
-                                label = "Hydration Dew",
-                                valueText = "${egg.incubatedHydrationMl}/${egg.requiredHydrationMl}mL",
-                                progress = egg.incubatedHydrationMl.toFloat() / egg.requiredHydrationMl.coerceAtLeast(1),
-                                fillColor = colors.hydrationCyan,
-                                barHeight = 8.dp,
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
-        item { Spacer(Modifier.height(24.dp)) }
     }
 }

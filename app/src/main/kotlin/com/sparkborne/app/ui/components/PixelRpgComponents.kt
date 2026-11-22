@@ -321,6 +321,97 @@ fun RpgStatChip(
     }
 }
 
+enum class CurrencyKind(
+    val label: String,
+    @DrawableRes val iconRes: Int,
+    val tintColor: Color,
+) {
+    GOLD("Gold", R.drawable.icon_currency_gold, Color(0xFFF5B041)),
+    IRON("Iron", R.drawable.icon_currency_iron, Color(0xFFB0C4DE)),
+    SHARDS("Shards", R.drawable.icon_currency_shards, Color(0xFFA78BFA)),
+}
+
+/**
+ * Gleaming pixel-art currency badge with beveled border, crisp nearest-neighbor icon,
+ * and tabular monospace readout.
+ */
+@Composable
+fun RpgCurrencyBadge(
+    kind: CurrencyKind,
+    amount: Int,
+    modifier: Modifier = Modifier,
+    prefix: String = "",
+    compact: Boolean = false,
+) {
+    val context = LocalContext.current
+    val bitmap = remember(kind.iconRes) {
+        BitmapFactory.decodeResource(context.resources, kind.iconRes).asImageBitmap()
+    }
+    val colors = RpgTheme.colors
+    val formatted = "%,d".format(amount)
+
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(if (compact) 6.dp else 7.dp),
+        color = colors.obsidianBg.copy(alpha = 0.92f),
+        border = BorderStroke(1.dp, kind.tintColor.copy(alpha = 0.55f)),
+    ) {
+        Row(
+            modifier = Modifier.padding(
+                horizontal = if (compact) 6.dp else 8.dp,
+                vertical = if (compact) 3.dp else 4.dp,
+            ),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Image(
+                bitmap = bitmap,
+                contentDescription = kind.label,
+                filterQuality = FilterQuality.None,
+                contentScale = ContentScale.Fit,
+                modifier = Modifier.size(if (compact) 14.dp else 17.dp),
+            )
+            Text(
+                text = "$prefix$formatted",
+                style = if (compact) MaterialTheme.typography.labelSmall else MaterialTheme.typography.labelMedium,
+                fontFamily = FontFamily.Monospace,
+                fontWeight = FontWeight.ExtraBold,
+                color = kind.tintColor,
+            )
+        }
+    }
+}
+
+/**
+ * Displays any non-zero combination of Gold, Iron Ore, and Ember Shards as gleaming pixel currency pills.
+ */
+@Composable
+fun RpgCurrencyRow(
+    gold: Int = 0,
+    iron: Int = 0,
+    shards: Int = 0,
+    modifier: Modifier = Modifier,
+    showZeros: Boolean = false,
+    prefix: String = "",
+    compact: Boolean = false,
+) {
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(if (compact) 5.dp else 7.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (showZeros || gold > 0) {
+            RpgCurrencyBadge(CurrencyKind.GOLD, gold, prefix = prefix, compact = compact)
+        }
+        if (showZeros || iron > 0) {
+            RpgCurrencyBadge(CurrencyKind.IRON, iron, prefix = prefix, compact = compact)
+        }
+        if (showZeros || shards > 0) {
+            RpgCurrencyBadge(CurrencyKind.SHARDS, shards, prefix = prefix, compact = compact)
+        }
+    }
+}
+
 @Composable
 fun UpdateAvailableBanner(
     update: AppUpdateInfo,

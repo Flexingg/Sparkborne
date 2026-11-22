@@ -730,14 +730,19 @@ private fun TownSheetContent(
                                 }
                             }
 
-                            // Drop Preview Chips
+                            // Drop Preview Chips with Pixel Currency Icons
                             Row(
                                 horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier.fillMaxWidth(),
                             ) {
-                                if (act.rewardGold > 0) ActivityDropChip("+${act.rewardGold}g", colors.accentPrimary)
-                                if (act.rewardIron > 0) ActivityDropChip("+${act.rewardIron}fe", colors.ironSteel)
-                                if (act.rewardShards > 0) ActivityDropChip("+${act.rewardShards}sh", colors.arcaneMana)
+                                com.sparkborne.app.ui.components.RpgCurrencyRow(
+                                    gold = act.rewardGold,
+                                    iron = act.rewardIron,
+                                    shards = act.rewardShards,
+                                    prefix = "+",
+                                    compact = true,
+                                )
                                 ActivityDropChip("+${act.rewardXp} XP", colors.vitalityEmerald)
                                 if (act.rewardMonsterXp > 0) ActivityDropChip("+${act.rewardMonsterXp} Pet", colors.accentSecondary)
                             }
@@ -817,21 +822,21 @@ private fun TownSheetContent(
                     }
 
                     items(town.shopListings, key = { it.id }) { listing ->
-                        val costParts = buildList {
-                            if (listing.goldCost > 0) add("${listing.goldCost}g")
-                            if (listing.ironCost > 0) add("${listing.ironCost}fe")
-                            if (listing.shardsCost > 0) add("${listing.shardsCost}sh")
-                        }.joinToString(" · ")
                         RpgPanel {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                Column(modifier = Modifier.weight(1f)) {
+                                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                     Text(listing.title, fontWeight = FontWeight.Bold)
                                     Text(listing.subtitle, style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
-                                    Text(costParts, style = MaterialTheme.typography.labelSmall, fontFamily = FontFamily.Monospace, color = colors.accentPrimary)
+                                    com.sparkborne.app.ui.components.RpgCurrencyRow(
+                                        gold = listing.goldCost,
+                                        iron = listing.ironCost,
+                                        shards = listing.shardsCost,
+                                        compact = true,
+                                    )
                                 }
                                 RpgActionButton(
                                     text = if (isHere) "BUY" else "VISIT",

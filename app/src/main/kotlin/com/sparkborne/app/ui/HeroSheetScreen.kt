@@ -444,19 +444,26 @@ fun HeroTabScreen(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Column(modifier = Modifier.weight(1f)) {
+                            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Text(weapon.name, fontWeight = FontWeight.Bold)
                                 Text(
                                     "${weapon.weaponClass.displayName} · Base ${weapon.baseDamage} · ${weapon.weaponClass.scalingMuscles.joinToString { it.displayName }}",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = colors.textMuted,
                                 )
+                                if (!owned && (weapon.forgeGoldCost > 0 || weapon.forgeIronCost > 0)) {
+                                    com.sparkborne.app.ui.components.RpgCurrencyRow(
+                                        gold = weapon.forgeGoldCost,
+                                        iron = weapon.forgeIronCost,
+                                        compact = true,
+                                    )
+                                }
                             }
                             RpgActionButton(
                                 text = when {
                                     equipped -> "EQUIPPED"
                                     owned -> "EQUIP"
-                                    else -> "${weapon.forgeGoldCost}g/${weapon.forgeIronCost}fe"
+                                    else -> "FORGE"
                                 },
                                 onClick = { onForgeOrEquipWeapon(weapon.id) },
                                 enabled = !equipped,
@@ -477,19 +484,27 @@ fun HeroTabScreen(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Column(modifier = Modifier.weight(1f)) {
+                            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Text("${armor.name} (${armor.slot.displayName})", fontWeight = FontWeight.Bold)
                                 Text(
                                     "DEF +${armor.defense} · HP +${armor.bonusHp} · Mana +${armor.bonusMana}",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = colors.textMuted,
                                 )
+                                if (!owned && (armor.forgeGoldCost > 0 || armor.forgeIronCost > 0 || armor.forgeShardsCost > 0)) {
+                                    com.sparkborne.app.ui.components.RpgCurrencyRow(
+                                        gold = armor.forgeGoldCost,
+                                        iron = armor.forgeIronCost,
+                                        shards = armor.forgeShardsCost,
+                                        compact = true,
+                                    )
+                                }
                             }
                             RpgActionButton(
                                 text = when {
                                     equipped -> "EQUIPPED"
                                     owned -> "EQUIP"
-                                    else -> "FORGE ${armor.forgeGoldCost}g"
+                                    else -> "FORGE"
                                 },
                                 onClick = { onForgeOrEquipArmor(armor.id) },
                                 enabled = !equipped,
@@ -513,15 +528,21 @@ fun HeroTabScreen(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Column(modifier = Modifier.weight(1f)) {
+                            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Text("✨ ${spell.name} (${spell.manaCost} Mana)", fontWeight = FontWeight.Bold)
                                 Text(spell.description, style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
+                                if (!unlocked && spell.unlockShardsCost > 0) {
+                                    com.sparkborne.app.ui.components.RpgCurrencyRow(
+                                        shards = spell.unlockShardsCost,
+                                        compact = true,
+                                    )
+                                }
                             }
                             RpgActionButton(
                                 text = when {
                                     attuned -> "ATTUNED"
                                     unlocked -> "ATTUNE"
-                                    else -> "${spell.unlockShardsCost}sh"
+                                    else -> "UNLOCK"
                                 },
                                 onClick = { onUnlockOrAttuneSpell(spell.id) },
                                 enabled = !attuned,
