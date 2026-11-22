@@ -6,13 +6,14 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 
 @Database(
-    entities = [DailySnapshotEntity::class],
-    version = 1,
+    entities = [DailySnapshotEntity::class, GameStateEntity::class],
+    version = 2,
     exportSchema = false,
 )
 abstract class SparkborneDatabase : RoomDatabase() {
 
     abstract fun dailySnapshotDao(): DailySnapshotDao
+    abstract fun gameStateDao(): GameStateDao
 
     companion object {
         @Volatile
@@ -24,7 +25,10 @@ abstract class SparkborneDatabase : RoomDatabase() {
                     context.applicationContext,
                     SparkborneDatabase::class.java,
                     "sparkborne.db",
-                ).build().also { INSTANCE = it }
+                )
+                    .fallbackToDestructiveMigration()
+                    .build()
+                    .also { INSTANCE = it }
             }
         }
     }

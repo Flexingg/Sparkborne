@@ -16,4 +16,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "Sparkborne"
 include(":core-telemetry")
+include(":core-game")
 include(":app")

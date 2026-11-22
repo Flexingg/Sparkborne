@@ -37,6 +37,67 @@ import com.sparkborne.telemetry.model.BodyweightTrend
 import com.sparkborne.telemetry.model.DailyTelemetrySnapshot
 import kotlin.math.roundToInt
 
+@Composable
+fun TelemetrySyncTabContent(
+    state: SparkborneUiState,
+    onBaseUrlChange: (String) -> Unit,
+    onApiKeyChange: (String) -> Unit,
+    onSelectDate: (String) -> Unit,
+    onPing: () -> Unit,
+    onSyncToday: () -> Unit,
+    onSync14Days: () -> Unit,
+) {
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        item {
+            ConnectionCard(
+                baseUrl = state.baseUrl,
+                apiKey = state.apiKey,
+                isSyncing = state.isSyncing,
+                statusMessage = state.statusMessage,
+                errorMessage = state.errorMessage,
+                onBaseUrlChange = onBaseUrlChange,
+                onApiKeyChange = onApiKeyChange,
+                onPing = onPing,
+                onSyncToday = onSyncToday,
+                onSync14Days = onSync14Days,
+            )
+        }
+
+        state.bodyweightTrend?.let { trend ->
+            if (trend.latestWeightKg != null) {
+                item { BodyweightTrendCard(trend) }
+            }
+        }
+
+        if (state.snapshots.isNotEmpty()) {
+            item {
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(state.snapshots, key = { it.date }) { snap ->
+                        FilterChip(
+                            selected = snap.date == state.selectedSnapshot?.date,
+                            onClick = { onSelectDate(snap.date) },
+                            label = { Text(snap.date) },
+                        )
+                    }
+                }
+            }
+        }
+
+        state.selectedSnapshot?.let { snapshot ->
+            item { DailyOverviewCard(snapshot) }
+            item { LiftingMuscleGroupsCard(snapshot) }
+            item { IdempotencyAuditCard(snapshot) }
+        }
+
+        item { Spacer(Modifier.height(24.dp)) }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun TelemetryInspectorScreen(viewModel: TelemetryInspectorViewModel) {

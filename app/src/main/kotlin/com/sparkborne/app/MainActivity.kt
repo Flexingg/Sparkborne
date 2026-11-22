@@ -4,8 +4,8 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.sparkborne.app.ui.TelemetryInspectorScreen
-import com.sparkborne.app.ui.TelemetryInspectorViewModel
+import com.sparkborne.app.ui.SparkborneRootScreen
+import com.sparkborne.app.ui.SparkborneViewModel
 import com.sparkborne.app.ui.theme.SparkborneTheme
 
 class MainActivity : ComponentActivity() {
@@ -13,8 +13,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             SparkborneTheme {
-                val vm: TelemetryInspectorViewModel = viewModel()
-                TelemetryInspectorScreen(viewModel = vm)
+                val vm: SparkborneViewModel = viewModel()
+                SparkborneRootScreen(viewModel = vm)
             }
         }
     }

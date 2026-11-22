@@ -40,6 +40,7 @@ android {
 
 dependencies {
     implementation(project(":core-telemetry"))
+    implementation(project(":core-game"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
