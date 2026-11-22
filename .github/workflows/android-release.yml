@@ -1,0 +1,75 @@
+name: Android Build & Release
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Run unit tests
+        run: ./gradlew test
+
+      - name: Build Debug APK
+        run: ./gradlew :app:assembleDebug
+
+      - name: Prepare release metadata & APK artifact
+        id: release_meta
+        run: |
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          TAG="v0.1.${{ github.run_number }}"
+          APK_SOURCE="app/build/outputs/apk/debug/app-debug.apk"
+          APK_RENAMED="sparkborne-${TAG}-${SHORT_SHA}.apk"
+          cp "${APK_SOURCE}" "${APK_RENAMED}"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "short_sha=${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+          echo "apk_file=${APK_RENAMED}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload APK build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sparkborne-apk-${{ steps.release_meta.outputs.tag }}
+          path: ${{ steps.release_meta.outputs.apk_file }}
+
+      - name: Create GitHub Release and attach APK
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ steps.release_meta.outputs.tag }}"
+          SHORT_SHA="${{ steps.release_meta.outputs.short_sha }}"
+          APK_FILE="${{ steps.release_meta.outputs.apk_file }}"
+          COMMIT_MSG=$(git log -1 --pretty=%B)
+
+          gh release create "${TAG}" "${APK_FILE}" \
+            --target "${{ github.sha }}" \
+            --title "Sparkborne ${TAG} (${SHORT_SHA})" \
+            --notes "Automated build for commit \`${SHORT_SHA}\`.\n\n**Latest commit:**\n${COMMIT_MSG}" \
+            --generate-notes
