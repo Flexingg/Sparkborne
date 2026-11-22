@@ -33,6 +33,9 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import com.sparkborne.app.ui.components.ElementalAppearanceCard
+import com.sparkborne.app.ui.theme.SparkborneThemeId
+import com.sparkborne.app.ui.theme.SplashStyleId
 import com.sparkborne.telemetry.model.BodyweightTrend
 import com.sparkborne.telemetry.model.DailyTelemetrySnapshot
 import kotlin.math.roundToInt
@@ -47,6 +50,9 @@ fun TelemetrySyncTabContent(
     onSyncToday: () -> Unit,
     onSync14Days: () -> Unit,
     onCheckUpdates: () -> Unit,
+    onSelectTheme: (SparkborneThemeId) -> Unit,
+    onSelectSplash: (SplashStyleId) -> Unit,
+    onReplaySplash: () -> Unit,
 ) {
     LazyColumn(
         modifier = Modifier
@@ -66,6 +72,16 @@ fun TelemetrySyncTabContent(
                 onPing = onPing,
                 onSyncToday = onSyncToday,
                 onSync14Days = onSync14Days,
+            )
+        }
+
+        item {
+            ElementalAppearanceCard(
+                selectedTheme = state.selectedTheme,
+                selectedSplash = state.selectedSplash,
+                onSelectTheme = onSelectTheme,
+                onSelectSplash = onSelectSplash,
+                onReplaySplash = onReplaySplash,
             )
         }
 

@@ -2,27 +2,36 @@ package com.sparkborne.app.ui.components
 
 import android.graphics.BitmapFactory
 import androidx.annotation.DrawableRes
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -34,15 +43,21 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.sparkborne.app.R
 import com.sparkborne.app.data.AppUpdateInfo
-import com.sparkborne.app.ui.theme.RpgColors
+import com.sparkborne.app.ui.theme.RpgTheme
+import com.sparkborne.app.ui.theme.SparkborneThemeId
+import com.sparkborne.app.ui.theme.SplashStyleId
+import com.sparkborne.game.model.DelveNode
 import com.sparkborne.game.model.MonsterAffinity
 
 @DrawableRes
@@ -65,7 +80,7 @@ fun PixelSprite(
     contentDescription: String,
     size: Dp,
     modifier: Modifier = Modifier,
-    borderColor: Color = RpgColors.PixelBorderBright,
+    borderColor: Color = RpgTheme.colors.pixelBorderBright,
 ) {
     val context = LocalContext.current
     val bitmap = remember(drawableRes) {
@@ -75,7 +90,7 @@ fun PixelSprite(
         modifier = modifier
             .size(size)
             .clip(RoundedCornerShape(6.dp))
-            .background(RpgColors.PanelSurface)
+            .background(RpgTheme.colors.panelSurface)
             .border(2.dp, borderColor, RoundedCornerShape(6.dp)),
         contentAlignment = Alignment.Center,
     ) {
@@ -112,13 +127,13 @@ fun PixelBannerImage(
 }
 
 /**
- * WalkScape-style dark slate RPG panel with crisp pixel border.
+ * WalkScape-style dark slate RPG panel with crisp theme-aware pixel border.
  */
 @Composable
 fun RpgPanel(
     modifier: Modifier = Modifier,
-    borderColor: Color = RpgColors.PixelBorder,
-    containerColor: Color = RpgColors.PanelSurface,
+    borderColor: Color = RpgTheme.colors.pixelBorder,
+    containerColor: Color = RpgTheme.colors.panelSurface,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Surface(
@@ -136,6 +151,52 @@ fun RpgPanel(
 }
 
 /**
+ * Tactile spring-pressed RPG button with subtle scale compression and haptic tick.
+ */
+@Composable
+fun RpgActionButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    containerColor: Color = RpgTheme.colors.accentPrimary,
+    contentColor: Color = Color(0xFF0B0E14),
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed && enabled) 0.96f else 1f,
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        label = "btn_spring",
+    )
+    val haptics = LocalHapticFeedback.current
+
+    Button(
+        onClick = {
+            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+            onClick()
+        },
+        enabled = enabled,
+        interactionSource = interactionSource,
+        shape = RoundedCornerShape(7.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = containerColor,
+            contentColor = contentColor,
+        ),
+        modifier = modifier.graphicsLayer {
+            scaleX = scale
+            scaleY = scale
+        },
+    ) {
+        Text(
+            text = text,
+            fontFamily = FontFamily.Monospace,
+            fontWeight = FontWeight.Bold,
+        )
+    }
+}
+
+/**
  * Chunky animated RPG progress bar with crisp border and monospace value readout.
  */
 @Composable
@@ -147,9 +208,10 @@ fun RpgProgressBar(
     modifier: Modifier = Modifier,
     barHeight: Dp = 10.dp,
 ) {
+    val colors = RpgTheme.colors
     val animatedProgress by animateFloatAsState(
         targetValue = progress.coerceIn(0f, 1f),
-        animationSpec = tween(durationMillis = 350),
+        animationSpec = tween(durationMillis = 380),
         label = "rpg_bar",
     )
     Column(
@@ -163,7 +225,7 @@ fun RpgProgressBar(
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelMedium,
-                color = RpgColors.TextPrimary,
+                color = colors.textPrimary,
                 fontWeight = FontWeight.SemiBold,
             )
             Text(
@@ -179,14 +241,47 @@ fun RpgProgressBar(
                 .fillMaxWidth()
                 .height(barHeight)
                 .clip(RoundedCornerShape(4.dp))
-                .background(RpgColors.ObsidianBg)
-                .border(1.dp, RpgColors.PixelBorder, RoundedCornerShape(4.dp)),
+                .background(colors.obsidianBg)
+                .border(1.dp, colors.pixelBorder, RoundedCornerShape(4.dp)),
         ) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth(animatedProgress)
                     .fillMaxHeight()
                     .background(fillColor),
+            )
+        }
+    }
+}
+
+/**
+ * WalkScape-inspired horizontal connected node trail showing expedition progress at a glance.
+ */
+@Composable
+fun NodeTrailIndicator(
+    nodes: List<DelveNode>,
+    currentNodeIndex: Int,
+    modifier: Modifier = Modifier,
+) {
+    val colors = RpgTheme.colors
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        nodes.forEachIndexed { idx, node ->
+            val nodeColor = when {
+                node.cleared -> colors.vitalityEmerald
+                idx == currentNodeIndex && node.isUnlocked -> colors.accentPrimary
+                idx == currentNodeIndex -> colors.accentSecondary
+                else -> colors.pixelBorder
+            }
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(8.dp)
+                    .clip(RoundedCornerShape(3.dp))
+                    .background(nodeColor),
             )
         }
     }
@@ -199,10 +294,11 @@ fun RpgStatChip(
     accent: Color,
     modifier: Modifier = Modifier,
 ) {
+    val colors = RpgTheme.colors
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(6.dp),
-        color = RpgColors.ObsidianBg,
+        color = colors.obsidianBg,
         border = BorderStroke(1.dp, accent.copy(alpha = 0.55f)),
     ) {
         Column(
@@ -212,7 +308,7 @@ fun RpgStatChip(
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelSmall,
-                color = RpgColors.TextMuted,
+                color = colors.textMuted,
             )
             Text(
                 text = value,
@@ -231,9 +327,10 @@ fun UpdateAvailableBanner(
     downloadProgress: Float?,
     onDownloadAndInstall: () -> Unit,
 ) {
+    val colors = RpgTheme.colors
     RpgPanel(
-        borderColor = RpgColors.EmberGold,
-        containerColor = Color(0xFF241D11),
+        borderColor = colors.accentPrimary,
+        containerColor = colors.panelElevated,
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -244,32 +341,134 @@ fun UpdateAvailableBanner(
                 Text(
                     text = "Update Ready · ${update.tagName}",
                     style = MaterialTheme.typography.titleSmall,
-                    color = RpgColors.EmberGold,
+                    color = colors.accentPrimary,
                     fontWeight = FontWeight.Bold,
                 )
                 Text(
                     text = "Updates in-place without losing your save or API key.",
                     style = MaterialTheme.typography.bodySmall,
-                    color = RpgColors.TextMuted,
+                    color = colors.textMuted,
                 )
             }
-            Button(
+            RpgActionButton(
+                text = if (downloadProgress == null) "UPDATE" else "${(downloadProgress * 100).toInt()}%",
                 onClick = onDownloadAndInstall,
                 enabled = downloadProgress == null,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = RpgColors.EmberGold,
-                    contentColor = Color(0xFF1A1205),
-                ),
-            ) {
-                Text(if (downloadProgress == null) "Update" else "${(downloadProgress * 100).toInt()}%")
-            }
+            )
         }
         if (downloadProgress != null) {
             LinearProgressIndicator(
                 progress = { downloadProgress },
                 modifier = Modifier.fillMaxWidth(),
-                color = RpgColors.EmberGold,
+                color = colors.accentPrimary,
             )
+        }
+    }
+}
+
+/**
+ * Interactive 7-theme elemental picker (Fire, Explorer, Lightning, Water, Plant, Poison, Void)
+ * + 3 animated splash screen backdrops + instant "Replay Splash" preview button.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun ElementalAppearanceCard(
+    selectedTheme: SparkborneThemeId,
+    selectedSplash: SplashStyleId,
+    onSelectTheme: (SparkborneThemeId) -> Unit,
+    onSelectSplash: (SplashStyleId) -> Unit,
+    onReplaySplash: () -> Unit,
+) {
+    val colors = RpgTheme.colors
+    RpgPanel(borderColor = colors.pixelBorderBright) {
+        Text(
+            "ELEMENTAL THEME & SPLASH",
+            style = MaterialTheme.typography.labelLarge,
+            color = colors.accentPrimary,
+            fontFamily = FontFamily.Monospace,
+            fontWeight = FontWeight.Bold,
+        )
+        Text(
+            "Switch realm palettes & live splash particle elements anytime:",
+            style = MaterialTheme.typography.bodySmall,
+            color = colors.textMuted,
+        )
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            SparkborneThemeId.entries.forEach { theme ->
+                val active = theme == selectedTheme
+                Surface(
+                    shape = RoundedCornerShape(7.dp),
+                    color = if (active) theme.palette.panelElevated else colors.obsidianBg,
+                    border = BorderStroke(
+                        width = if (active) 2.dp else 1.dp,
+                        color = if (active) theme.palette.accentPrimary else colors.pixelBorder,
+                    ),
+                    modifier = Modifier.clickable { onSelectTheme(theme) },
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(10.dp)
+                                .clip(CircleShape)
+                                .background(theme.palette.accentPrimary),
+                        )
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .clip(CircleShape)
+                                .background(theme.palette.accentSecondary),
+                        )
+                        Text(
+                            text = "${theme.elementTag} · ${theme.displayName}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (active) theme.palette.accentPrimary else colors.textPrimary,
+                            fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
+                        )
+                    }
+                }
+            }
+        }
+
+        Text(
+            "ANIMATED SPLASH BACKDROP",
+            style = MaterialTheme.typography.labelMedium,
+            color = colors.textMuted,
+            fontFamily = FontFamily.Monospace,
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+            SplashStyleId.entries.forEach { splash ->
+                val active = splash == selectedSplash
+                Surface(
+                    shape = RoundedCornerShape(6.dp),
+                    color = if (active) colors.panelElevated else colors.obsidianBg,
+                    border = BorderStroke(
+                        width = if (active) 2.dp else 1.dp,
+                        color = if (active) colors.accentPrimary else colors.pixelBorder,
+                    ),
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable { onSelectSplash(splash) },
+                ) {
+                    Text(
+                        text = splash.displayName,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (active) colors.accentPrimary else colors.textPrimary,
+                        fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
+                    )
+                }
+            }
+        }
+
+        OutlinedButton(onClick = onReplaySplash, modifier = Modifier.fillMaxWidth()) {
+            Text("Preview Animated Splash Screen", fontFamily = FontFamily.Monospace)
         }
     }
 }

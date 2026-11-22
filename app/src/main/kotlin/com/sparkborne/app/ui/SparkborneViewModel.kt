@@ -6,10 +6,13 @@ import androidx.lifecycle.viewModelScope
 import com.sparkborne.app.BuildConfig
 import com.sparkborne.app.data.AppUpdateInfo
 import com.sparkborne.app.data.AppUpdater
+import com.sparkborne.app.data.AppearanceStore
 import com.sparkborne.app.data.CredentialsStore
 import com.sparkborne.app.data.GameRepository
 import com.sparkborne.app.data.TelemetryRepository
 import com.sparkborne.app.data.db.SparkborneDatabase
+import com.sparkborne.app.ui.theme.SparkborneThemeId
+import com.sparkborne.app.ui.theme.SplashStyleId
 import com.sparkborne.game.catalog.GameCatalog
 import com.sparkborne.game.engine.CombatAction
 import com.sparkborne.game.engine.CombatResolver
@@ -35,6 +38,9 @@ enum class SparkborneTab(val label: String, val badge: String) {
 
 data class SparkborneUiState(
     val selectedTab: SparkborneTab = SparkborneTab.DELVE,
+    val selectedTheme: SparkborneThemeId = SparkborneThemeId.EMBER_OBSIDIAN,
+    val selectedSplash: SplashStyleId = SplashStyleId.TWILIGHT_CITADEL,
+    val showSplash: Boolean = true,
     val baseUrl: String = "",
     val apiKey: String = "",
     val isSyncing: Boolean = false,
@@ -56,6 +62,7 @@ data class SparkborneUiState(
 class SparkborneViewModel(application: Application) : AndroidViewModel(application) {
 
     private val credentialsStore = CredentialsStore(application)
+    private val appearanceStore = AppearanceStore(application)
     private val db = SparkborneDatabase.getInstance(application)
     private val telemetryRepository = TelemetryRepository(db.dailySnapshotDao())
     private val gameRepository = GameRepository(db.gameStateDao())
@@ -65,8 +72,17 @@ class SparkborneViewModel(application: Application) : AndroidViewModel(applicati
     val uiState: StateFlow<SparkborneUiState> = _uiState.asStateFlow()
 
     init {
-        val saved = credentialsStore.load()
-        _uiState.update { it.copy(baseUrl = saved.baseUrl, apiKey = saved.apiKey) }
+        val savedCreds = credentialsStore.load()
+        val savedTheme = appearanceStore.loadTheme()
+        val savedSplash = appearanceStore.loadSplash()
+        _uiState.update {
+            it.copy(
+                baseUrl = savedCreds.baseUrl,
+                apiKey = savedCreds.apiKey,
+                selectedTheme = savedTheme,
+                selectedSplash = savedSplash,
+            )
+        }
 
         viewModelScope.launch {
             telemetryRepository.observeSnapshots().collect { snapshots ->
@@ -96,6 +112,24 @@ class SparkborneViewModel(application: Application) : AndroidViewModel(applicati
 
     fun selectTab(tab: SparkborneTab) {
         _uiState.update { it.copy(selectedTab = tab, errorMessage = null) }
+    }
+
+    fun selectTheme(themeId: SparkborneThemeId) {
+        appearanceStore.saveTheme(themeId)
+        _uiState.update { it.copy(selectedTheme = themeId) }
+    }
+
+    fun selectSplash(splashId: SplashStyleId) {
+        appearanceStore.saveSplash(splashId)
+        _uiState.update { it.copy(selectedSplash = splashId) }
+    }
+
+    fun dismissSplash() {
+        _uiState.update { it.copy(showSplash = false) }
+    }
+
+    fun replaySplash() {
+        _uiState.update { it.copy(showSplash = true) }
     }
 
     fun onBaseUrlChanged(value: String) {

@@ -1,5 +1,12 @@
 package com.sparkborne.app.ui
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -20,20 +27,21 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.sparkborne.app.ui.components.UpdateAvailableBanner
-import com.sparkborne.app.ui.theme.RpgColors
+import com.sparkborne.app.ui.theme.RpgTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SparkborneRootScreen(viewModel: SparkborneViewModel) {
     val state by viewModel.uiState.collectAsState()
+    val colors = RpgTheme.colors
 
     Scaffold(
-        containerColor = RpgColors.ObsidianBg,
+        containerColor = colors.obsidianBg,
         topBar = {
             TopAppBar(
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = RpgColors.PanelSurface,
-                    titleContentColor = RpgColors.TextPrimary,
+                    containerColor = colors.panelSurface,
+                    titleContentColor = colors.textPrimary,
                 ),
                 title = {
                     Column {
@@ -41,19 +49,19 @@ fun SparkborneRootScreen(viewModel: SparkborneViewModel) {
                             "SPARKBORNE",
                             fontWeight = FontWeight.ExtraBold,
                             fontFamily = FontFamily.Monospace,
-                            color = RpgColors.EmberGold,
+                            color = colors.accentPrimary,
                         )
                         Text(
-                            "${state.selectedTab.label} · ${state.installedVersionLabel}",
+                            "${state.selectedTab.label} · ${state.selectedTheme.elementTag} Realm · ${state.installedVersionLabel}",
                             style = MaterialTheme.typography.labelSmall,
-                            color = RpgColors.TextMuted,
+                            color = colors.textMuted,
                         )
                     }
                 },
             )
         },
         bottomBar = {
-            NavigationBar(containerColor = RpgColors.PanelSurface) {
+            NavigationBar(containerColor = colors.panelSurface) {
                 SparkborneTab.entries.forEach { tab ->
                     NavigationBarItem(
                         selected = state.selectedTab == tab,
@@ -80,8 +88,17 @@ fun SparkborneRootScreen(viewModel: SparkborneViewModel) {
                 }
             }
 
-            Box(modifier = Modifier.weight(1f)) {
-                when (state.selectedTab) {
+            AnimatedContent(
+                targetState = state.selectedTab,
+                transitionSpec = {
+                    val direction = if (targetState.ordinal >= initialState.ordinal) 1 else -1
+                    (fadeIn(tween(220)) + slideInHorizontally(tween(240)) { it / 8 * direction }) togetherWith
+                        (fadeOut(tween(180)) + slideOutHorizontally(tween(200)) { -it / 8 * direction })
+                },
+                modifier = Modifier.weight(1f),
+                label = "tab_transition",
+            ) { currentTab ->
+                when (currentTab) {
                     SparkborneTab.DELVE -> DelveTabScreen(
                         state = state.gameState,
                         errorMessage = state.errorMessage,
@@ -116,6 +133,9 @@ fun SparkborneRootScreen(viewModel: SparkborneViewModel) {
                         onSyncToday = { viewModel.syncDays(1) },
                         onSync14Days = { viewModel.syncDays(14) },
                         onCheckUpdates = { viewModel.checkForUpdates(silent = false) },
+                        onSelectTheme = viewModel::selectTheme,
+                        onSelectSplash = viewModel::selectSplash,
+                        onReplaySplash = viewModel::replaySplash,
                     )
                 }
             }
