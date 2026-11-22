@@ -130,6 +130,8 @@ fun SparkborneRootScreen(
                     onForgeOrToggleTool = viewModel::forgeOrToggleTool,
                     onSaveGearSet = viewModel::saveGearSet,
                     onEquipGearSet = viewModel::equipGearSet,
+                    onCraftRecipe = viewModel::craftRecipe,
+                    onUseConsumable = viewModel::useConsumable,
                 )
 
                 SparkborneTab.MONSTERS -> MonstersTabScreen(

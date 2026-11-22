@@ -561,6 +561,14 @@ class SparkborneViewModel(application: Application) : AndroidViewModel(applicati
         com.sparkborne.game.engine.ToolbeltEngine.equipGearSet(state, slotIndex)
     }
 
+    fun craftRecipe(recipeId: String) = runGameMutation { state ->
+        com.sparkborne.game.engine.CraftingEngine.craftRecipe(state, recipeId)
+    }
+
+    fun useConsumable(recipeId: String) = runGameMutation { state ->
+        com.sparkborne.game.engine.CraftingEngine.useConsumable(state, recipeId)
+    }
+
     // --- WalkScape World, Travel, Activities & Shops ---
 
     fun startTravel(destinationId: String) = runGameMutation { state ->

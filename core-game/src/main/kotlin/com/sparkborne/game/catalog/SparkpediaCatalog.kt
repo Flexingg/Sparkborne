@@ -66,6 +66,15 @@ object SparkpediaCatalog {
             unlockHint = "Unlocked from the start.",
         ),
         CodexEntry(
+            id = "guide_crafting_consumables",
+            category = CodexCategory.GUIDES,
+            title = "Crafting, Cooking & Consumables",
+            subtitle = "Materials · Quality Tiers · Battle Tonics",
+            summary = "Town Activities drop raw Materials (Basalt Ore, Moonleaf Herb, Silverfin Fish, Mire Spore, Sunstone Dust, Astral Essence) used to craft powerful Consumables.",
+            mechanicsDetail = "• Trailblazer Brew: +25% Work Efficiency for 10 cycles.\n• Silverfin Stew / Spore Mana Tonic / Astral Surge Flask: Heal HP, restore Mana, or raise Shields inside Delves.\n• Warmth & Dew Elixir: Accelerates Monster Egg incubation!\n• Quality Tiers scale with Skill Level: Standard (Lv.1) → Fine (Lv.5, +15%) → Superior (Lv.12, +30%) → Masterwork (Lv.25, +50% & 2× crafts!).",
+            unlockHint = "Unlocked from the start.",
+        ),
+        CodexEntry(
             id = "guide_muscle_scaling",
             category = CodexCategory.GUIDES,
             title = "Muscle Strength & Weapons",

@@ -63,9 +63,11 @@ object SkillEngine {
         skill: SkillType,
     ): Int {
         val level = levelForXp(state.player.skillXp[skill] ?: 0)
+        val brewBoost = if (state.player.activeStepBoostCharges > 0) CraftingEngine.STEP_BOOST_EFFICIENCY_PERCENT else 0
         val effPct = workEfficiencyPercent(level) +
             CollectibleEngine.totalBonus(state, com.sparkborne.game.model.CollectibleBonusType.WORK_EFFICIENCY_PERCENT) +
-            ToolbeltEngine.workEfficiencyBonus(state, skill)
+            ToolbeltEngine.workEfficiencyBonus(state, skill) +
+            brewBoost
         val multiplier = (100.0 / (100.0 + effPct)).coerceAtLeast(0.35)
         return (baseSteps * multiplier).roundToInt().coerceAtLeast((baseSteps * 0.35).roundToInt().coerceAtLeast(100))
     }

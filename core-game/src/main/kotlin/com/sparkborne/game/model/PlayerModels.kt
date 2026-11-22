@@ -170,6 +170,9 @@ data class PlayerState(
     val ownedToolIds: Set<String> = emptySet(),
     val equippedToolIds: List<String> = emptyList(),
     val gearSets: List<GearSetPreset> = emptyList(),
+    val materials: Map<MaterialType, Int> = emptyMap(),
+    val consumables: Map<String, Int> = emptyMap(),
+    val activeStepBoostCharges: Int = 0,
 ) {
     fun maxToolbeltSlots(): Int = when {
         level >= 10 -> 4

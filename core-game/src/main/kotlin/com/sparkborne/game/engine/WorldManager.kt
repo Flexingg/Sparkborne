@@ -174,6 +174,10 @@ object WorldManager {
         }
 
         val lifetimeActCompletions = (state.player.activityCompletions[def.id] ?: 0) + completions
+        val droppedMat = CraftingEngine.materialForSkill(skill)
+        val nextMaterials = state.player.materials + (droppedMat to ((state.player.materials[droppedMat] ?: 0) + completions))
+        val remainingBoostCharges = (state.player.activeStepBoostCharges - completions).coerceAtLeast(0)
+
         val updatedPlayer = state.player.copy(
             level = newLevel,
             xp = newXp,
@@ -181,6 +185,8 @@ object WorldManager {
             ironOre = state.player.ironOre + ironGain,
             emberShards = state.player.emberShards + shardGain,
             activityCompletions = state.player.activityCompletions + (def.id to lifetimeActCompletions),
+            materials = nextMaterials,
+            activeStepBoostCharges = remainingBoostCharges,
         )
 
         val updatedMonsters = if (monXpGain > 0) {

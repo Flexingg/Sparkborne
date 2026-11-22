@@ -62,11 +62,12 @@ private enum class HeroSubTab(val label: String) {
     PAPER_DOLL("Gear"),
     SKILLS("Skills"),
     FORGE("Forge"),
+    CRAFT("Craft"),
     SPELLS("Spells"),
 }
 
 /**
- * Component 3: Game-style RPG Paper-Doll Hero Equipment Sheet + Skills (1-99) & Skill Chests + Muscle Matrix.
+ * Component 3: Game-style RPG Paper-Doll Hero Equipment Sheet + Skills (1-99) & Skill Chests + Crafting & Consumables.
  */
 @Composable
 fun HeroTabScreen(
@@ -79,6 +80,8 @@ fun HeroTabScreen(
     onForgeOrToggleTool: (String) -> Unit = {},
     onSaveGearSet: (Int, String) -> Unit = { _, _ -> },
     onEquipGearSet: (Int) -> Unit = {},
+    onCraftRecipe: (String) -> Unit = {},
+    onUseConsumable: (String) -> Unit = {},
 ) {
     val stats = CombatStatsCalculator.calculate(state)
     val player = state.player
@@ -808,6 +811,119 @@ fun HeroTabScreen(
                                 fontWeight = FontWeight.Bold,
                                 color = if (found) colors.vitalityEmerald else colors.textMuted,
                             )
+                        }
+                    }
+                }
+            }
+
+            HeroSubTab.CRAFT -> {
+                item {
+                    RpgPanel(borderColor = colors.accentSecondary) {
+                        Text(
+                            "🧺 MATERIALS SATCHEL",
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = colors.accentSecondary,
+                        )
+                        if (player.activeStepBoostCharges > 0) {
+                            Text(
+                                "⚡ Trailblazer Brew Active: +25% Work Efficiency (${player.activeStepBoostCharges} cycles left)",
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = colors.vitalityEmerald,
+                            )
+                        }
+                        com.sparkborne.game.model.MaterialType.entries.chunked(2).forEach { pair ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                pair.forEach { mat ->
+                                    val count = player.materials[mat] ?: 0
+                                    Surface(
+                                        shape = RoundedCornerShape(6.dp),
+                                        color = colors.panelElevated,
+                                        border = BorderStroke(1.dp, if (count > 0) colors.accentSecondary else colors.pixelBorder),
+                                        modifier = Modifier.weight(1f),
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically,
+                                        ) {
+                                            Text("${mat.icon} ${mat.displayName.substringBefore(" ")}", fontSize = 11.sp, color = colors.textPrimary)
+                                            Text(
+                                                "x$count",
+                                                fontFamily = FontFamily.Monospace,
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = if (count > 0) colors.accentPrimary else colors.textMuted,
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                item {
+                    Text(
+                        "COOKING & ALCHEMY WORKSHOP",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = colors.accentPrimary,
+                        fontFamily = FontFamily.Monospace,
+                    )
+                }
+
+                items(com.sparkborne.game.engine.CraftingEngine.recipes, key = { it.id }) { recipe ->
+                    val ownedQty = player.consumables[recipe.id] ?: 0
+                    val tier = com.sparkborne.game.engine.CraftingEngine.qualityTierFor(state, recipe)
+                    val reqText = recipe.requiredMaterials.entries.joinToString(" · ") { (m, qty) ->
+                        val have = player.materials[m] ?: 0
+                        "${m.icon}$have/$qty"
+                    } + if (recipe.goldCost > 0) " · ${recipe.goldCost}g" else ""
+
+                    RpgPanel(borderColor = if (ownedQty > 0) colors.vitalityEmerald else colors.pixelBorder) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                Text(
+                                    "${recipe.icon} ${recipe.name}" + if (ownedQty > 0) " (x$ownedQty)" else "",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.sp,
+                                )
+                                Text(
+                                    "${tier.displayName} Quality (${recipe.craftSkill.displayName} Lv.${player.skillLevel(recipe.craftSkill)})",
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 10.sp,
+                                    color = colors.accentPrimary,
+                                )
+                                Text(recipe.description, style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
+                                Text(reqText, fontFamily = FontFamily.Monospace, fontSize = 10.sp, color = colors.accentSecondary)
+                            }
+                            Column(
+                                verticalArrangement = Arrangement.spacedBy(4.dp),
+                                horizontalAlignment = Alignment.End,
+                            ) {
+                                RpgActionButton(
+                                    text = "CRAFT",
+                                    onClick = { onCraftRecipe(recipe.id) },
+                                    containerColor = colors.accentPrimary,
+                                )
+                                if (ownedQty > 0) {
+                                    RpgActionButton(
+                                        text = "USE",
+                                        onClick = { onUseConsumable(recipe.id) },
+                                        containerColor = colors.vitalityEmerald,
+                                    )
+                                }
+                            }
                         }
                     }
                 }
