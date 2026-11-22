@@ -76,6 +76,9 @@ fun HeroTabScreen(
     onForgeOrEquipArmor: (String) -> Unit,
     onUnlockOrAttuneSpell: (String) -> Unit,
     onOpenSkillChest: (com.sparkborne.game.model.SkillType) -> Unit = {},
+    onForgeOrToggleTool: (String) -> Unit = {},
+    onSaveGearSet: (Int, String) -> Unit = { _, _ -> },
+    onEquipGearSet: (Int) -> Unit = {},
 ) {
     val stats = CombatStatsCalculator.calculate(state)
     val player = state.player
@@ -441,9 +444,136 @@ fun HeroTabScreen(
                         }
                     }
                 }
+
+                // Toolbelt Slots & 1-Tap Gear Set Presets
+                item {
+                    val maxTools = player.maxToolbeltSlots()
+                    RpgPanel(borderColor = colors.accentSecondary) {
+                        Text(
+                            "🧰 TOOLBELT (${player.equippedToolIds.size} / $maxTools SLOTS)",
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = colors.accentSecondary,
+                        )
+                        if (player.equippedToolIds.isEmpty()) {
+                            Text(
+                                "No tools equipped yet. Forge Skilling Tools in Hero → Forge for +Work Efficiency & +Bonus Yield! (3rd slot at Lv.5, 4th at Lv.10)",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = colors.textMuted,
+                            )
+                        } else {
+                            player.equippedToolIds.mapNotNull(com.sparkborne.game.engine.ToolbeltEngine::toolById).forEach { tool ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Text("${tool.icon} ${tool.name} (+${tool.workEfficiencyBonusPercent}% Eff)", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                    RpgActionButton(
+                                        text = "REMOVE",
+                                        onClick = { onForgeOrToggleTool(tool.id) },
+                                        containerColor = colors.ironSteel,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                item {
+                    val presetNames = listOf("Combat", "Skilling", "Boss")
+                    RpgPanel(borderColor = colors.accentPrimary) {
+                        Text(
+                            "🎒 GEAR SET PRESETS (1-TAP SWAP)",
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = colors.accentPrimary,
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            presetNames.forEachIndexed { idx, defaultName ->
+                                val saved = player.gearSets.firstOrNull { it.slotIndex == idx }
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = colors.panelElevated,
+                                    border = BorderStroke(1.dp, if (saved != null) colors.accentPrimary else colors.pixelBorder),
+                                    modifier = Modifier.weight(1f),
+                                ) {
+                                    Column(
+                                        modifier = Modifier.padding(6.dp),
+                                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                    ) {
+                                        Text(
+                                            saved?.name ?: defaultName,
+                                            fontFamily = FontFamily.Monospace,
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = if (saved != null) colors.accentPrimary else colors.textMuted,
+                                            maxLines = 1,
+                                        )
+                                        if (saved != null) {
+                                            RpgActionButton(
+                                                text = "EQUIP",
+                                                onClick = { onEquipGearSet(idx) },
+                                                containerColor = colors.vitalityEmerald,
+                                            )
+                                        }
+                                        RpgActionButton(
+                                            text = "SAVE",
+                                            onClick = { onSaveGearSet(idx, defaultName) },
+                                            containerColor = colors.accentSecondary,
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
             HeroSubTab.FORGE -> {
+                item {
+                    Text("SKILLING TOOLS (TOOLBELT)", style = MaterialTheme.typography.labelLarge, color = colors.vitalityEmerald, fontFamily = FontFamily.Monospace)
+                }
+                items(com.sparkborne.game.engine.ToolbeltEngine.tools, key = { it.id }) { tool ->
+                    val owned = tool.id in player.ownedToolIds
+                    val equipped = tool.id in player.equippedToolIds
+                    RpgPanel(borderColor = if (equipped) colors.vitalityEmerald else colors.pixelBorder) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Text("${tool.icon} ${tool.name}", fontWeight = FontWeight.Bold)
+                                Text(tool.description, style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
+                                if (!owned) {
+                                    com.sparkborne.app.ui.components.RpgCurrencyRow(
+                                        gold = tool.forgeGoldCost,
+                                        iron = tool.forgeIronCost,
+                                        shards = tool.forgeShardsCost,
+                                        compact = true,
+                                    )
+                                }
+                            }
+                            RpgActionButton(
+                                text = when {
+                                    equipped -> "UNEQUIP"
+                                    owned -> "EQUIP"
+                                    else -> "FORGE"
+                                },
+                                onClick = { onForgeOrToggleTool(tool.id) },
+                                containerColor = if (equipped) colors.ironSteel else colors.vitalityEmerald,
+                            )
+                        }
+                    }
+                }
+
                 item {
                     Text("WEAPONS", style = MaterialTheme.typography.labelLarge, color = colors.accentPrimary, fontFamily = FontFamily.Monospace)
                 }

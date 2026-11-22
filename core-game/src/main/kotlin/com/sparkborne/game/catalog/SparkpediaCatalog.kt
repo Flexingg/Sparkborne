@@ -57,6 +57,15 @@ object SparkpediaCatalog {
             unlockHint = "Unlocked from the start.",
         ),
         CodexEntry(
+            id = "guide_toolbelt_gearsets",
+            category = CodexCategory.GUIDES,
+            title = "Toolbelt Slots & Gear Sets",
+            subtitle = "Skilling Attributes · 1-Tap Loadout Swaps",
+            summary = "Equip specialized Skilling Tools on your Toolbelt for +Work Efficiency & +Bonus Yield, and save up to 3 Gear Set Presets for instant swapping.",
+            mechanicsDetail = "• Toolbelt starts with 2 slots (3rd unlocks at Lv.5, 4th at Lv.10).\n• Forge Iron Pickaxe, Moonleaf Sickle, Tidecaller Rod, Mire Alembic, Sunstone Trowel, or the Starbound Multi-Tool in Hero → Forge.\n• Save Combat, Skilling, and Boss presets in Hero → Gear for 1-tap swaps!",
+            unlockHint = "Unlocked from the start.",
+        ),
+        CodexEntry(
             id = "guide_muscle_scaling",
             category = CodexCategory.GUIDES,
             title = "Muscle Strength & Weapons",

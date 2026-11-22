@@ -549,6 +549,18 @@ class SparkborneViewModel(application: Application) : AndroidViewModel(applicati
         com.sparkborne.game.engine.SkillEngine.openSkillChest(state, skill).map { (next, _) -> next }
     }
 
+    fun forgeOrToggleTool(toolId: String) = runGameMutation { state ->
+        com.sparkborne.game.engine.ToolbeltEngine.forgeOrToggleTool(state, toolId)
+    }
+
+    fun saveGearSet(slotIndex: Int, name: String) = runGameMutation { state ->
+        com.sparkborne.game.engine.ToolbeltEngine.saveGearSet(state, slotIndex, name)
+    }
+
+    fun equipGearSet(slotIndex: Int) = runGameMutation { state ->
+        com.sparkborne.game.engine.ToolbeltEngine.equipGearSet(state, slotIndex)
+    }
+
     // --- WalkScape World, Travel, Activities & Shops ---
 
     fun startTravel(destinationId: String) = runGameMutation { state ->

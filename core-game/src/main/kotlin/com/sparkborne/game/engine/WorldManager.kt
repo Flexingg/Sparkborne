@@ -156,8 +156,9 @@ object WorldManager {
             return state.copy(activeActivity = activeAct.copy(stepsProgress = remainder))
         }
 
-        val goldBonusPct = CollectibleEngine.totalBonus(state, com.sparkborne.game.model.CollectibleBonusType.GOLD_YIELD_PERCENT)
-        val matBonusPct = CollectibleEngine.totalBonus(state, com.sparkborne.game.model.CollectibleBonusType.IRON_SHARD_YIELD_PERCENT)
+        val toolYieldPct = ToolbeltEngine.bonusYieldPercent(state, skill)
+        val goldBonusPct = CollectibleEngine.totalBonus(state, com.sparkborne.game.model.CollectibleBonusType.GOLD_YIELD_PERCENT) + toolYieldPct
+        val matBonusPct = CollectibleEngine.totalBonus(state, com.sparkborne.game.model.CollectibleBonusType.IRON_SHARD_YIELD_PERCENT) + toolYieldPct
 
         val goldGain = kotlin.math.round(completions * def.rewardGold * (1.0 + goldBonusPct / 100.0)).toInt()
         val ironGain = kotlin.math.round(completions * def.rewardIron * (1.0 + matBonusPct / 100.0)).toInt()

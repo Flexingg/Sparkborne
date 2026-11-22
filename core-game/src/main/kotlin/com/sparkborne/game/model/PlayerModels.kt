@@ -167,7 +167,15 @@ data class PlayerState(
     val totalChestsOpened: Int = 0,
     val activityCompletions: Map<String, Int> = emptyMap(),
     val discoveredCollectibleIds: Set<String> = emptySet(),
+    val ownedToolIds: Set<String> = emptySet(),
+    val equippedToolIds: List<String> = emptyList(),
+    val gearSets: List<GearSetPreset> = emptyList(),
 ) {
+    fun maxToolbeltSlots(): Int = when {
+        level >= 10 -> 4
+        level >= 5 -> 3
+        else -> 2
+    }
     fun skillLevel(skill: SkillType): Int =
         com.sparkborne.game.engine.SkillEngine.levelForXp(skillXp[skill] ?: 0)
 
