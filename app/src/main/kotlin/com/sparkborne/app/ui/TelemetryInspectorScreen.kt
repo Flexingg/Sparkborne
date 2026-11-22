@@ -46,6 +46,7 @@ fun TelemetrySyncTabContent(
     onPing: () -> Unit,
     onSyncToday: () -> Unit,
     onSync14Days: () -> Unit,
+    onCheckUpdates: () -> Unit,
 ) {
     LazyColumn(
         modifier = Modifier
@@ -66,6 +67,28 @@ fun TelemetrySyncTabContent(
                 onSyncToday = onSyncToday,
                 onSync14Days = onSync14Days,
             )
+        }
+
+        item {
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text("App Updates (In-Place)", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        "Installed: ${state.installedVersionLabel}",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontFamily = FontFamily.Monospace,
+                    )
+                    state.updateStatusMessage?.let {
+                        Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.tertiary)
+                    }
+                    OutlinedButton(onClick = onCheckUpdates) {
+                        Text("Check GitHub Releases")
+                    }
+                }
+            }
         }
 
         state.bodyweightTrend?.let { trend ->

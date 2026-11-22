@@ -3,6 +3,9 @@ package com.sparkborne.app.ui
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.sparkborne.app.BuildConfig
+import com.sparkborne.app.data.AppUpdateInfo
+import com.sparkborne.app.data.AppUpdater
 import com.sparkborne.app.data.CredentialsStore
 import com.sparkborne.app.data.GameRepository
 import com.sparkborne.app.data.TelemetryRepository
@@ -23,11 +26,11 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 
-enum class SparkborneTab(val label: String) {
-    DELVE("Delve"),
-    HERO("Hero"),
-    MONSTERS("Monsters"),
-    SYNC("Sync"),
+enum class SparkborneTab(val label: String, val badge: String) {
+    DELVE("Delve", "⚔"),
+    HERO("Hero", "🛡"),
+    MONSTERS("Beasts", "🐉"),
+    SYNC("Sync", "⚡"),
 }
 
 data class SparkborneUiState(
@@ -41,6 +44,10 @@ data class SparkborneUiState(
     val selectedDate: String? = null,
     val bodyweightTrend: BodyweightTrend? = null,
     val gameState: GameState = GameCatalog.initialGameState(),
+    val availableUpdate: AppUpdateInfo? = null,
+    val updateDownloadProgress: Float? = null,
+    val updateStatusMessage: String? = null,
+    val installedVersionLabel: String = "${BuildConfig.VERSION_NAME} (#${BuildConfig.VERSION_CODE})",
 ) {
     val selectedSnapshot: DailyTelemetrySnapshot?
         get() = snapshots.firstOrNull { it.date == selectedDate } ?: snapshots.firstOrNull()
@@ -52,6 +59,7 @@ class SparkborneViewModel(application: Application) : AndroidViewModel(applicati
     private val db = SparkborneDatabase.getInstance(application)
     private val telemetryRepository = TelemetryRepository(db.dailySnapshotDao())
     private val gameRepository = GameRepository(db.gameStateDao())
+    private val appUpdater = AppUpdater(application)
 
     private val _uiState = MutableStateFlow(SparkborneUiState())
     val uiState: StateFlow<SparkborneUiState> = _uiState.asStateFlow()
@@ -82,6 +90,8 @@ class SparkborneViewModel(application: Application) : AndroidViewModel(applicati
                 _uiState.update { it.copy(gameState = gameState) }
             }
         }
+
+        checkForUpdates(silent = true)
     }
 
     fun selectTab(tab: SparkborneTab) {
@@ -98,6 +108,58 @@ class SparkborneViewModel(application: Application) : AndroidViewModel(applicati
 
     fun onSelectDate(date: String) {
         _uiState.update { it.copy(selectedDate = date) }
+    }
+
+    fun checkForUpdates(silent: Boolean = false) {
+        viewModelScope.launch {
+            if (!silent) {
+                _uiState.update { it.copy(updateStatusMessage = "Checking GitHub Releases...") }
+            }
+            appUpdater.checkForUpdate()
+                .onSuccess { update ->
+                    _uiState.update {
+                        it.copy(
+                            availableUpdate = update,
+                            updateStatusMessage = when {
+                                update != null -> "Update available: ${update.tagName}"
+                                !silent -> "Up to date (${it.installedVersionLabel})"
+                                else -> it.updateStatusMessage
+                            },
+                        )
+                    }
+                }
+                .onFailure { ex ->
+                    if (!silent) {
+                        _uiState.update {
+                            it.copy(updateStatusMessage = "Update check failed: ${ex.message}")
+                        }
+                    }
+                }
+        }
+    }
+
+    fun downloadAndInstallUpdate() {
+        val update = _uiState.value.availableUpdate ?: return
+        viewModelScope.launch {
+            _uiState.update { it.copy(updateDownloadProgress = 0f, updateStatusMessage = "Downloading ${update.tagName}...") }
+            appUpdater.downloadAndInstall(update) { progress ->
+                _uiState.update { it.copy(updateDownloadProgress = progress) }
+            }.onSuccess {
+                _uiState.update {
+                    it.copy(
+                        updateDownloadProgress = null,
+                        updateStatusMessage = "Installer opened for ${update.tagName}.",
+                    )
+                }
+            }.onFailure { ex ->
+                _uiState.update {
+                    it.copy(
+                        updateDownloadProgress = null,
+                        updateStatusMessage = "Install failed: ${ex.message}",
+                    )
+                }
+            }
+        }
     }
 
     fun testConnection() {
@@ -165,7 +227,7 @@ class SparkborneViewModel(application: Application) : AndroidViewModel(applicati
         }
     }
 
-    // --- Phase 2 Game Actions ---
+    // --- Game Engine Actions ---
 
     fun startExpedition(contractId: String) = runGameMutation { state ->
         ExpeditionManager.startExpedition(state, contractId, LocalDate.now())

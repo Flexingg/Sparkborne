@@ -39,6 +39,8 @@ jobs:
         run: ./gradlew test
 
       - name: Build Debug APK
+        env:
+          SPARKBORNE_VERSION_NAME: v0.1.${{ github.run_number }}
         run: ./gradlew :app:assembleDebug
 
       - name: Prepare release metadata & APK artifact

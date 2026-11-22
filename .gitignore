@@ -14,6 +14,7 @@ local.properties
 # Keystores & secrets
 *.jks
 *.keystore
+!app/sparkborne-debug.keystore
 secrets.properties
 .env
 .env.*

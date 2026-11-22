@@ -14,11 +14,23 @@ android {
         applicationId = "com.sparkborne.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0-phase1"
+        versionCode = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1
+        versionName = System.getenv("SPARKBORNE_VERSION_NAME") ?: "0.1.0-local"
+    }
+
+    signingConfigs {
+        getByName("debug") {
+            storeFile = file("sparkborne-debug.keystore")
+            storePassword = "android"
+            keyAlias = "sparkborne"
+            keyPassword = "android"
+        }
     }
 
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("debug")
+        }
         release {
             isMinifyEnabled = false
         }
@@ -35,6 +47,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
