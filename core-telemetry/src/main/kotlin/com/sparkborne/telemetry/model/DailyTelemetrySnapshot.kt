@@ -21,6 +21,7 @@ data class DailyTelemetrySnapshot(
     val adherence: GoalAdherenceSummary,
     val contentHash: String,
     val syncedAtEpochMs: Long,
+    val metricSources: Map<String, String> = emptyMap(),
 )
 
 @Serializable

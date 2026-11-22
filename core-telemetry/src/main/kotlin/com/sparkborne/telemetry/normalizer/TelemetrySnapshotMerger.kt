@@ -87,6 +87,25 @@ object TelemetrySnapshotMerger {
         val lifting = existing?.lifting ?: emptyLifting()
         val bodyweightKg = (reading.bodyweightKg ?: existing?.bodyweightKg)?.let(::round2)
 
+        val sources = existing?.metricSources?.toMutableMap() ?: mutableMapOf()
+        fun tagHc(key: String, hcVal: Double, existingVal: Double) {
+            if (hcVal <= 0.0) return
+            val prev = sources[key]
+            sources[key] = when {
+                existingVal <= 0.0 -> "Health Connect"
+                hcVal > existingVal -> "Health Connect"
+                prev == "SparkyFitness" || prev == "HC + Sparky" -> "HC + Sparky"
+                else -> "Health Connect"
+            }
+        }
+        tagHc("steps", reading.steps.toDouble(), (existing?.steps ?: 0).toDouble())
+        tagHc("sleep", reading.sleepTotalMinutes.toDouble(), (existing?.sleep?.totalMinutes ?: 0).toDouble())
+        tagHc("hydration", reading.hydrationMl.toDouble(), (existing?.hydration?.totalMl ?: 0).toDouble())
+        tagHc("nutrition", reading.calories, existing?.nutrition?.calories ?: 0.0)
+        if (reading.bodyweightKg != null) {
+            sources["weight"] = if (existing?.bodyweightKg != null && sources["weight"] == "SparkyFitness") "HC + Sparky" else "Health Connect"
+        }
+
         return buildSnapshot(
             date = reading.date,
             goals = goals,
@@ -97,6 +116,7 @@ object TelemetrySnapshotMerger {
             lifting = lifting,
             bodyweightKg = bodyweightKg,
             syncedAtEpochMs = max(existing?.syncedAtEpochMs ?: 0L, reading.syncedAtEpochMs),
+            metricSources = sources,
         )
     }
 
@@ -143,6 +163,27 @@ object TelemetrySnapshotMerger {
 
         val bodyweightKg = (sparky.bodyweightKg ?: existing.bodyweightKg)?.let(::round2)
 
+        val sources = existing.metricSources.toMutableMap()
+        fun tagSparky(key: String, sparkyVal: Double, existingVal: Double) {
+            if (sparkyVal <= 0.0) return
+            val prev = sources[key]
+            sources[key] = when {
+                existingVal <= 0.0 -> "SparkyFitness"
+                prev == "Health Connect" || prev == "HC + Sparky" -> "HC + Sparky"
+                else -> "SparkyFitness"
+            }
+        }
+        tagSparky("steps", sparky.steps.toDouble(), existing.steps.toDouble())
+        tagSparky("sleep", sparky.sleep.totalMinutes.toDouble(), existing.sleep.totalMinutes.toDouble())
+        tagSparky("hydration", sparky.hydration.totalMl.toDouble(), existing.hydration.totalMl.toDouble())
+        tagSparky("nutrition", sparky.nutrition.calories, existing.nutrition.calories)
+        if (sparky.bodyweightKg != null) {
+            sources["weight"] = if (existing.metricSources["weight"] == "Health Connect") "HC + Sparky" else "SparkyFitness"
+        }
+        if (lifting.totalVolumeKg > 0.0) {
+            sources["lifting"] = "SparkyFitness (Liftosaur)"
+        }
+
         return buildSnapshot(
             date = sparky.date,
             goals = sparky.goals,
@@ -153,6 +194,7 @@ object TelemetrySnapshotMerger {
             lifting = lifting,
             bodyweightKg = bodyweightKg,
             syncedAtEpochMs = max(existing.syncedAtEpochMs, sparky.syncedAtEpochMs),
+            metricSources = sources,
         )
     }
 
@@ -182,6 +224,7 @@ object TelemetrySnapshotMerger {
         lifting: LiftingSummary,
         bodyweightKg: Double?,
         syncedAtEpochMs: Long,
+        metricSources: Map<String, String> = emptyMap(),
     ): DailyTelemetrySnapshot {
         val adherence = GoalAdherenceSummary(
             caloriesRatio = safeRatio(nutrition.calories, goals.caloriesTarget.toDouble()),
@@ -205,6 +248,7 @@ object TelemetrySnapshotMerger {
             adherence = adherence,
             contentHash = "",
             syncedAtEpochMs = syncedAtEpochMs,
+            metricSources = metricSources,
         )
 
         return base.copy(contentHash = SnapshotIdempotency.computeContentHash(base))

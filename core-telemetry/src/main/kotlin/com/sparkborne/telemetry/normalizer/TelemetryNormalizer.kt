@@ -69,6 +69,15 @@ object TelemetryNormalizer {
             sleepRatio = safeRatio(sleep.totalMinutes.toDouble(), goals.sleepMinutesTarget.toDouble()),
         )
 
+        val sources = buildMap {
+            if (steps > 0) put("steps", "SparkyFitness")
+            if (sleep.totalMinutes > 0) put("sleep", "SparkyFitness")
+            if (hydration.totalMl > 0) put("hydration", "SparkyFitness")
+            if (nutrition.calories > 0.0 || nutrition.proteinGrams > 0.0) put("nutrition", "SparkyFitness")
+            if (bodyweightKg != null) put("weight", "SparkyFitness")
+            if (lifting.totalVolumeKg > 0.0) put("lifting", "SparkyFitness (Liftosaur)")
+        }
+
         val base = DailyTelemetrySnapshot(
             date = date,
             goals = goals,
@@ -81,6 +90,7 @@ object TelemetryNormalizer {
             adherence = adherence,
             contentHash = "",
             syncedAtEpochMs = syncedAtEpochMs,
+            metricSources = sources,
         )
 
         return base.copy(contentHash = SnapshotIdempotency.computeContentHash(base))

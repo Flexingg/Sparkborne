@@ -27,6 +27,7 @@ object SnapshotIdempotency {
         val normalizedForHash = snapshot.copy(
             contentHash = "",
             syncedAtEpochMs = 0L,
+            metricSources = emptyMap(),
         )
         val payload = canonicalJson.encodeToString(normalizedForHash)
         val digest = MessageDigest.getInstance("SHA-256").digest(payload.toByteArray(Charsets.UTF_8))
