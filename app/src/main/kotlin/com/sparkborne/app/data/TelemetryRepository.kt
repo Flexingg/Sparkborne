@@ -18,6 +18,7 @@ data class SyncRangeResult(
     val deltas: List<TelemetryDelta>,
     val updatedDays: Int,
     val unchangedDays: Int,
+    val providerSync: com.sparkborne.telemetry.client.ProviderSyncReport? = null,
 )
 
 /**
@@ -45,10 +46,20 @@ class TelemetryRepository(
         config: SparkyFitnessConfig,
         startDate: LocalDate,
         endDate: LocalDate,
+        triggerUpstreamProviders: Boolean = true,
     ): Result<SyncRangeResult> = runCatching {
         config.validate().getOrThrow()
 
-        val client = SparkyFitnessApiClient(config)
+        val client = SparkyFitnessApiClient(
+            config.copy(readTimeoutSeconds = maxOf(config.readTimeoutSeconds, 60L)),
+        )
+
+        val providerReport = if (triggerUpstreamProviders) {
+            client.triggerUpstreamProviderSyncs(startDate, endDate)
+        } else {
+            null
+        }
+
         val fetched = client.fetchNormalizedRange(startDate, endDate)
         val existingByDate = dao.getRange(startDate.toString(), endDate.toString())
             .associate { entity ->
@@ -84,6 +95,7 @@ class TelemetryRepository(
             deltas = deltas,
             updatedDays = updatedCount,
             unchangedDays = unchangedCount,
+            providerSync = providerReport,
         )
     }
 

@@ -231,9 +231,13 @@ class SparkborneViewModel(application: Application) : AndroidViewModel(applicati
 
         viewModelScope.launch {
             _uiState.update {
-                it.copy(isSyncing = true, statusMessage = "Syncing $startDate to $endDate...", errorMessage = null)
+                it.copy(
+                    isSyncing = true,
+                    statusMessage = "Triggering Garmin & Liftosaur sync ($startDate → $endDate)...",
+                    errorMessage = null,
+                )
             }
-            telemetryRepository.syncRange(config, startDate, endDate)
+            telemetryRepository.syncRange(config, startDate, endDate, triggerUpstreamProviders = true)
                 .onSuccess { result ->
                     val allSnapshots = (_uiState.value.snapshots + result.snapshots)
                         .associateBy { it.date }
@@ -245,11 +249,12 @@ class SparkborneViewModel(application: Application) : AndroidViewModel(applicati
                         deltas = result.deltas,
                         trend = trend,
                     )
+                    val providerText = result.providerSync?.shortSummary()?.let { "$it · " }.orEmpty()
                     val eventSummary = if (events.isNotEmpty()) " · ${events.size} game update(s)" else ""
                     _uiState.update {
                         it.copy(
                             isSyncing = false,
-                            statusMessage = "Synced ${result.snapshots.size}d (${result.updatedDays} updated)$eventSummary",
+                            statusMessage = "${providerText}Synced ${result.snapshots.size}d (${result.updatedDays} updated)$eventSummary",
                             errorMessage = null,
                             selectedDate = endDate.toString(),
                         )

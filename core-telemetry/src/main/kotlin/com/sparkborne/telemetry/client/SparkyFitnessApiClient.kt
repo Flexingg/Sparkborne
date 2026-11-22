@@ -13,11 +13,26 @@ import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
 import java.time.LocalDate
 import java.util.concurrent.TimeUnit
+
+data class ProviderSyncReport(
+    val garminSuccess: Boolean,
+    val garminError: String? = null,
+    val liftosaurSuccess: Boolean,
+    val liftosaurError: String? = null,
+) {
+    fun shortSummary(): String {
+        val g = if (garminSuccess) "Garmin ✓" else "Garmin ⚠"
+        val l = if (liftosaurSuccess) "Liftosaur ✓" else "Liftosaur ⚠"
+        return "$g · $l"
+    }
+}
 
 /**
  * Strongly typed REST client for SparkyFitness.
@@ -134,6 +149,80 @@ class SparkyFitnessApiClient(
                 sleepEntries = sleepByDate[dateStr].orEmpty(),
                 syncedAtEpochMs = syncedAt,
             )
+        }
+    }
+
+    /**
+     * Triggers a manual full Garmin Connect sync on SparkyFitness for the authenticated user:
+     * `POST /api/integrations/garmin/sync`.
+     */
+    suspend fun triggerGarminSync(
+        startDate: LocalDate,
+        endDate: LocalDate,
+    ): Result<String> = runCatching {
+        val payload = """{"startDate":"$startDate","endDate":"$endDate"}"""
+        executePost("/api/integrations/garmin/sync", payload)
+    }
+
+    /**
+     * Triggers a manual Liftosaur sync on SparkyFitness for the authenticated user:
+     * `POST /api/integrations/liftosaur/sync`.
+     */
+    suspend fun triggerLiftosaurSync(
+        startDate: LocalDate,
+        endDate: LocalDate,
+    ): Result<String> = runCatching {
+        val payload = """{"startDate":"$startDate","endDate":"$endDate"}"""
+        executePost("/api/integrations/liftosaur/sync", payload)
+    }
+
+    /**
+     * Fires both Garmin Connect and Liftosaur server-side syncs concurrently.
+     * Failures on either provider are captured per-provider so telemetry fetching still proceeds.
+     */
+    suspend fun triggerUpstreamProviderSyncs(
+        startDate: LocalDate,
+        endDate: LocalDate,
+    ): ProviderSyncReport = coroutineScope {
+        val garminDeferred = async { triggerGarminSync(startDate, endDate) }
+        val liftosaurDeferred = async { triggerLiftosaurSync(startDate, endDate) }
+
+        val garminRes = garminDeferred.await()
+        val liftosaurRes = liftosaurDeferred.await()
+
+        ProviderSyncReport(
+            garminSuccess = garminRes.isSuccess,
+            garminError = garminRes.exceptionOrNull()?.message,
+            liftosaurSuccess = liftosaurRes.isSuccess,
+            liftosaurError = liftosaurRes.exceptionOrNull()?.message,
+        )
+    }
+
+    private suspend fun executePost(path: String, jsonBody: String): String = withContext(Dispatchers.IO) {
+        val url = "${config.normalizedBaseUrl}$path"
+        val mediaType = "application/json; charset=utf-8".toMediaType()
+        val request = Request.Builder()
+            .url(url)
+            .header("x-api-key", config.apiKey.trim())
+            .header("Accept", "application/json")
+            .post(jsonBody.toRequestBody(mediaType))
+            .build()
+
+        val response = try {
+            httpClient.newCall(request).execute()
+        } catch (e: IOException) {
+            throw SparkyFitnessApiException.NetworkError("Network error calling POST $path: ${e.message}", e)
+        }
+
+        response.use { res ->
+            val bodyString = res.body?.string().orEmpty()
+            when (res.code) {
+                in 200..299 -> bodyString
+                401 -> throw SparkyFitnessApiException.Unauthorized()
+                403 -> throw SparkyFitnessApiException.Forbidden()
+                404 -> throw SparkyFitnessApiException.NotFound(path)
+                else -> throw SparkyFitnessApiException.HttpError(res.code, bodyString)
+            }
         }
     }
 

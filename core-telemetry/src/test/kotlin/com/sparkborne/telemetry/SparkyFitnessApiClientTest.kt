@@ -88,4 +88,35 @@ class SparkyFitnessApiClientTest {
         )
         client.fetchDailySummary(LocalDate.of(2026, 11, 22))
     }
+
+    @Test
+    fun `triggers Garmin Connect and Liftosaur sync endpoints concurrently with date range`() = runTest {
+        val observedPosts = mutableMapOf<String, String>()
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                if (request.method == "POST") {
+                    observedPosts[request.path.orEmpty()] = request.body.readUtf8()
+                }
+                return when (request.path) {
+                    "/api/integrations/garmin/sync" ->
+                        MockResponse().setResponseCode(200).setBody("""{"status":"ok"}""")
+                    "/api/integrations/liftosaur/sync" ->
+                        MockResponse().setResponseCode(200).setBody("""{"status":"ok"}""")
+                    else -> MockResponse().setResponseCode(404)
+                }
+            }
+        }
+
+        val client = SparkyFitnessApiClient(
+            config = SparkyFitnessConfig(baseUrl = server.url("/").toString(), apiKey = "sk-test-key"),
+        )
+        val start = LocalDate.of(2026, 11, 21)
+        val end = LocalDate.of(2026, 11, 22)
+        val report = client.triggerUpstreamProviderSyncs(start, end)
+
+        assertTrue(report.garminSuccess)
+        assertTrue(report.liftosaurSuccess)
+        assertEquals("""{"startDate":"2026-11-21","endDate":"2026-11-22"}""", observedPosts["/api/integrations/garmin/sync"])
+        assertEquals("""{"startDate":"2026-11-21","endDate":"2026-11-22"}""", observedPosts["/api/integrations/liftosaur/sync"])
+    }
 }
