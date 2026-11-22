@@ -53,6 +53,7 @@ fun TelemetrySyncTabContent(
     onSelectTheme: (SparkborneThemeId) -> Unit,
     onSelectSplash: (SplashStyleId) -> Unit,
     onReplaySplash: () -> Unit,
+    onResetNewJourney: () -> Unit,
 ) {
     LazyColumn(
         modifier = Modifier
@@ -91,7 +92,7 @@ fun TelemetrySyncTabContent(
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Text("App Updates (In-Place)", style = MaterialTheme.typography.titleMedium)
+                    Text("App Updates & Fresh Journey", style = MaterialTheme.typography.titleMedium)
                     Text(
                         "Installed: ${state.installedVersionLabel}",
                         style = MaterialTheme.typography.bodySmall,
@@ -100,8 +101,13 @@ fun TelemetrySyncTabContent(
                     state.updateStatusMessage?.let {
                         Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.tertiary)
                     }
-                    OutlinedButton(onClick = onCheckUpdates) {
-                        Text("Check GitHub Releases")
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(onClick = onCheckUpdates) {
+                            Text("Check Updates")
+                        }
+                        OutlinedButton(onClick = onResetNewJourney) {
+                            Text("Reset to Lv.0 Intro")
+                        }
                     }
                 }
             }

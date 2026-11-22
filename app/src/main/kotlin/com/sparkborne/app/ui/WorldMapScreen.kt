@@ -175,6 +175,7 @@ fun WorldTabScreen(
     onStopActivity: () -> Unit,
     onBuyShopItem: (String) -> Unit,
     onStartContractFromTown: (String) -> Unit,
+    onVisitedShop: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
@@ -456,6 +457,7 @@ fun WorldTabScreen(
                         onStartContractFromTown(contractId)
                         selectedTownId = null
                     },
+                    onVisitedShop = onVisitedShop,
                 )
             }
         }
@@ -537,6 +539,7 @@ private fun TownSheetContent(
     onStopActivity: () -> Unit,
     onBuyShopItem: (String) -> Unit,
     onStartContractFromTown: (String) -> Unit,
+    onVisitedShop: () -> Unit = {},
 ) {
     val colors = RpgTheme.colors
     val elemColor = elementColor(town.element)
@@ -616,7 +619,10 @@ private fun TownSheetContent(
                     border = BorderStroke(1.5.dp, if (active) elemColor else colors.pixelBorder),
                     modifier = Modifier
                         .weight(1f)
-                        .clickable { section = tab },
+                        .clickable {
+                            section = tab
+                            if (tab == TownDrawerSection.SHOP) onVisitedShop()
+                        },
                 ) {
                     Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(vertical = 7.dp)) {
                         Text(

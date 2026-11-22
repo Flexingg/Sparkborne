@@ -148,7 +148,7 @@ data class DailyDelveBuffs(
 
 @Serializable
 data class PlayerState(
-    val level: Int = 1,
+    val level: Int = 0,
     val xp: Int = 0,
     val gold: Int = 50,
     val emberShards: Int = 5,
@@ -172,5 +172,5 @@ data class PlayerState(
         return floor(sqrt(volumeXp / 250.0)).toInt() + 1
     }
 
-    fun xpToNextLevel(): Int = level * 150
+    fun xpToNextLevel(): Int = if (level <= 0) 100 else level * 150
 }

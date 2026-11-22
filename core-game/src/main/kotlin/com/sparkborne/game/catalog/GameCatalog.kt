@@ -163,6 +163,25 @@ object GameCatalog {
 
     val contracts: List<ExpeditionContract> = listOf(
         ExpeditionContract(
+            id = "exp_intro_ember_nest",
+            title = "The Ember Nest (Intro)",
+            description = "Intro Trial: Walk 1,500 steps to reach the ancient ember nest, defeat the Ash-Whelp, and claim your very first Monster Egg!",
+            cadence = ExpeditionCadence.DAILY,
+            durationDays = 3,
+            difficulty = ExpeditionDifficulty.SCOUT,
+            totalNodes = 2,
+            stepsPerNode = 750,
+            requirement = ContractRequirement(minTotalSteps = 1500),
+            baseRewardGold = 30,
+            baseRewardShards = 3,
+            baseRewardIron = 6,
+            grantsEggOnClear = false,
+            bossName = "Nestling Ash-Whelp",
+            bossHp = 34,
+            bossAttack = 7,
+            bossDefense = 1,
+        ),
+        ExpeditionContract(
             id = "exp_daily_ashlands_patrol",
             title = "Ashlands Patrol",
             description = "A brisk 1-day scout contract. Hit 6,000 steps to clear 3 nodes and face the Cinder Hound.",
@@ -314,28 +333,9 @@ object GameCatalog {
     }
 
     fun initialGameState(): GameState {
-        val starterMonster = MonsterCompanion(
-            id = "mon_starter_ember",
-            name = "Cinder",
-            speciesId = "spark_kit",
-            stage = MonsterStage.HATCHLING,
-            level = 1,
-            xp = 0,
-            affinity = MonsterAffinity.EMBERHEART,
-            baseAttack = 7,
-            baseDefense = 3,
-            evolutionHistory = listOf("Spark Kit"),
-        )
-        val starterEgg = MonsterEgg(
-            id = "egg_starter_01",
-            name = "Warm Ember Egg",
-            speciesSeed = "starter_egg_1",
-            requiredSleepMinutes = 900, // ~2 nights of solid sleep
-            requiredHydrationMl = 4500, // ~2 days of hydration
-        )
         return GameState(
             player = PlayerState(
-                level = 1,
+                level = 0,
                 xp = 0,
                 gold = 50,
                 emberShards = 5,
@@ -347,10 +347,10 @@ object GameCatalog {
                 ownedArmorIds = setOf("arm_scout_tunic"),
                 unlockedSpellIds = setOf("spl_spark_bolt"),
             ),
-            monsters = listOf(starterMonster),
-            activeMonsterId = starterMonster.id,
-            eggs = listOf(starterEgg),
-            recentLog = listOf("Welcome to Sparkborne. Sync SparkyFitness and pick your first contract."),
+            monsters = emptyList(),
+            activeMonsterId = null,
+            eggs = emptyList(),
+            recentLog = listOf("You awaken in Emberhearth Outpost at Level 0. Sync SparkyFitness and follow the Intro Quest to claim your first Monster Egg!"),
         )
     }
 }

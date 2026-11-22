@@ -42,6 +42,7 @@ data class SparkborneUiState(
     val selectedTheme: SparkborneThemeId = SparkborneThemeId.EMBER_OBSIDIAN,
     val selectedSplash: SplashStyleId = SplashStyleId.TWILIGHT_CITADEL,
     val showSplash: Boolean = true,
+    val showSparkpedia: Boolean = false,
     val baseUrl: String = "",
     val apiKey: String = "",
     val isSyncing: Boolean = false,
@@ -334,6 +335,65 @@ class SparkborneViewModel(application: Application) : AndroidViewModel(applicati
                 _uiState.update { it.copy(selectedTab = SparkborneTab.DELVE, errorMessage = null) }
             }.onFailure { ex ->
                 _uiState.update { it.copy(errorMessage = ex.message ?: "Could not start contract") }
+            }
+        }
+    }
+
+    // --- Sparkpedia & Intro Quest Tutorial ---
+
+    fun openSparkpedia() {
+        _uiState.update { it.copy(showSparkpedia = true) }
+        runGameMutation { state ->
+            Result.success(com.sparkborne.game.engine.SparkpediaEngine.markCodexRead(state))
+        }
+    }
+
+    fun closeSparkpedia() {
+        _uiState.update { it.copy(showSparkpedia = false) }
+    }
+
+    fun onVisitedTownShop() = runGameMutation { state ->
+        Result.success(com.sparkborne.game.engine.SparkpediaEngine.onVisitedShop(state))
+    }
+
+    fun handleIntroQuestAction() {
+        val step = _uiState.value.gameState.introQuest.currentStep
+        when (step) {
+            com.sparkborne.game.model.IntroQuestStep.SYNC_SPARKY -> {
+                if (_uiState.value.baseUrl.isBlank() || _uiState.value.apiKey.isBlank()) {
+                    selectTab(SparkborneTab.SYNC)
+                } else {
+                    syncDays(1)
+                }
+            }
+            com.sparkborne.game.model.IntroQuestStep.VISIT_EMBERHEARTH,
+            com.sparkborne.game.model.IntroQuestStep.START_FIRST_ACTIVITY,
+            -> selectTab(SparkborneTab.WORLD)
+            com.sparkborne.game.model.IntroQuestStep.ACCEPT_INTRO_QUEST -> {
+                if (_uiState.value.gameState.activeExpedition == null) {
+                    startContractFromTown(com.sparkborne.game.engine.SparkpediaEngine.INTRO_CONTRACT_ID)
+                } else {
+                    selectTab(SparkborneTab.DELVE)
+                }
+            }
+            com.sparkborne.game.model.IntroQuestStep.COMPLETED -> openSparkpedia()
+        }
+    }
+
+    /**
+     * Resets game progress to a fresh Level 0 journey (0 quests, 0 pets, 0 eggs)
+     * while preserving your SparkyFitness credentials and synced telemetry snapshots.
+     */
+    fun resetNewJourney() {
+        viewModelScope.launch {
+            val fresh = GameCatalog.initialGameState()
+            gameRepository.saveGameState(fresh)
+            _uiState.update {
+                it.copy(
+                    selectedTab = SparkborneTab.WORLD,
+                    statusMessage = "Started fresh Level 0 journey! Follow the Intro Quest to claim your first Egg.",
+                    errorMessage = null,
+                )
             }
         }
     }

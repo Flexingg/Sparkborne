@@ -247,8 +247,8 @@ object CombatResolver {
 
         var newLevel = state.player.level
         var newXp = state.player.xp + totalXp
-        while (newXp >= newLevel * 150) {
-            newXp -= newLevel * 150
+        while (newXp >= (if (newLevel <= 0) 100 else newLevel * 150)) {
+            newXp -= (if (newLevel <= 0) 100 else newLevel * 150)
             newLevel += 1
         }
 
@@ -272,7 +272,7 @@ object CombatResolver {
         val summary = "Expedition cleared: ${contract.title}! Banked +${totalGold}g, +$totalShards shards, +$totalIron iron" +
             if (totalEggs.isNotEmpty()) ", +${totalEggs.size} egg(s)!" else "."
 
-        return state.copy(
+        var nextState = state.copy(
             player = updatedPlayer,
             monsters = updatedMonsters,
             eggs = state.eggs + totalEggs,
@@ -284,6 +284,12 @@ object CombatResolver {
             totalRunsCompleted = state.totalRunsCompleted + 1,
             recentLog = (listOf(summary) + state.recentLog).take(30),
         )
+
+        if (contract.id == SparkpediaEngine.INTRO_CONTRACT_ID) {
+            nextState = SparkpediaEngine.onIntroContractCleared(nextState)
+        }
+
+        return SparkpediaEngine.syncCodexUnlocks(nextState)
     }
 
     internal fun failExpeditionAndWipeLoot(

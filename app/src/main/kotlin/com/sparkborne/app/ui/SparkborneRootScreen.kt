@@ -84,6 +84,7 @@ fun SparkborneRootScreen(viewModel: SparkborneViewModel) {
                     onStopActivity = viewModel::stopActivity,
                     onBuyShopItem = viewModel::buyShopListing,
                     onStartContractFromTown = viewModel::startContractFromTown,
+                    onVisitedShop = viewModel::onVisitedTownShop,
                 )
 
                 SparkborneTab.DELVE -> DelveTabScreen(
@@ -123,6 +124,7 @@ fun SparkborneRootScreen(viewModel: SparkborneViewModel) {
                     onSelectTheme = viewModel::selectTheme,
                     onSelectSplash = viewModel::selectSplash,
                     onReplaySplash = viewModel::replaySplash,
+                    onResetNewJourney = viewModel::resetNewJourney,
                 )
             }
         }
@@ -178,21 +180,41 @@ fun SparkborneRootScreen(viewModel: SparkborneViewModel) {
                             }
                         }
 
-                        // Quick 1-Tap SparkyFitness Step Sync pill right on the HUD!
-                        Surface(
-                            shape = RoundedCornerShape(7.dp),
-                            color = colors.panelElevated,
-                            border = BorderStroke(1.dp, colors.accentSecondary),
-                            modifier = Modifier.clickable(enabled = !state.isSyncing) { viewModel.syncDays(1) },
-                        ) {
-                            Text(
-                                text = if (state.isSyncing) "SYNCING..." else "⚡ SYNC",
-                                fontFamily = FontFamily.Monospace,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = colors.accentSecondary,
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                            )
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                            // 📖 Sparkpedia Codex Button with unread badge!
+                            val hasUnread = game.unreadCodexIds.isNotEmpty()
+                            Surface(
+                                shape = RoundedCornerShape(7.dp),
+                                color = colors.panelElevated,
+                                border = BorderStroke(
+                                    1.dp,
+                                    if (hasUnread) colors.accentPrimary else colors.pixelBorderBright,
+                                ),
+                                modifier = Modifier.clickable { viewModel.openSparkpedia() },
+                            ) {
+                                Text(
+                                    text = if (hasUnread) "📖•" else "📖",
+                                    fontSize = 13.sp,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
+                                )
+                            }
+
+                            // Quick 1-Tap SparkyFitness Step Sync pill right on the HUD!
+                            Surface(
+                                shape = RoundedCornerShape(7.dp),
+                                color = colors.panelElevated,
+                                border = BorderStroke(1.dp, colors.accentSecondary),
+                                modifier = Modifier.clickable(enabled = !state.isSyncing) { viewModel.syncDays(1) },
+                            ) {
+                                Text(
+                                    text = if (state.isSyncing) "SYNC..." else "⚡ SYNC",
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = colors.accentSecondary,
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                )
+                            }
                         }
                     }
 
@@ -270,6 +292,14 @@ fun SparkborneRootScreen(viewModel: SparkborneViewModel) {
                 }
             }
 
+            if (!game.introQuest.isComplete) {
+                IntroQuestBanner(
+                    step = game.introQuest.currentStep,
+                    onActionClick = viewModel::handleIntroQuestAction,
+                    onOpenGuide = viewModel::openSparkpedia,
+                )
+            }
+
             state.availableUpdate?.let { update ->
                 UpdateAvailableBanner(
                     update = update,
@@ -318,6 +348,14 @@ fun SparkborneRootScreen(viewModel: SparkborneViewModel) {
                     }
                 }
             }
+        }
+
+        // 4. Full-Screen WalkScape-Style Sparkpedia Codex Overlay
+        if (state.showSparkpedia) {
+            SparkpediaOverlay(
+                state = game,
+                onClose = viewModel::closeSparkpedia,
+            )
         }
     }
 }

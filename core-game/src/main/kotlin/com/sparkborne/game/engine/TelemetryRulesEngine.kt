@@ -175,7 +175,7 @@ object TelemetryRulesEngine {
         }
 
         val mergedLog = (events + state.recentLog).take(30)
-        nextState = nextState.copy(recentLog = mergedLog)
+        nextState = SparkpediaEngine.onTelemetrySynced(nextState.copy(recentLog = mergedLog))
 
         return TelemetryApplyResult(state = nextState, applied = true, events = events)
     }

@@ -55,17 +55,16 @@ object WorldManager {
             return Result.failure(IllegalStateException("Travel to ${WorldCatalog.locationById(activity.locationId).name} to do ${activity.name}."))
         }
 
-        return Result.success(
-            state.copy(
-                activeActivity = ActiveTownActivity(
-                    activityId = activity.id,
-                    locationId = activity.locationId,
-                    stepsProgress = 0,
-                    completionsCount = 0,
-                ),
-                recentLog = (listOf("Started ${activity.name} (${activity.stepsPerAction} steps/action).") + state.recentLog).take(30),
+        val started = state.copy(
+            activeActivity = ActiveTownActivity(
+                activityId = activity.id,
+                locationId = activity.locationId,
+                stepsProgress = 0,
+                completionsCount = 0,
             ),
+            recentLog = (listOf("Started ${activity.name} (${activity.stepsPerAction} steps/action).") + state.recentLog).take(30),
         )
+        return Result.success(SparkpediaEngine.onStartedActivity(started))
     }
 
     fun stopActivity(state: GameState): GameState {
@@ -80,7 +79,7 @@ object WorldManager {
             return Result.failure(IllegalStateException("You must be in ${WorldCatalog.locationById(listing.locationId).name} to shop here."))
         }
 
-        return when (listing.type) {
+        val result = when (listing.type) {
             ShopItemType.WEAPON -> ExpeditionManager.forgeAndEquipWeapon(state, listing.targetItemId)
             ShopItemType.ARMOR -> ExpeditionManager.forgeAndEquipArmor(state, listing.targetItemId)
             ShopItemType.SPELL -> ExpeditionManager.unlockAndAttuneSpell(state, listing.targetItemId)
@@ -110,6 +109,7 @@ object WorldManager {
             }
             ShopItemType.SUPPLIES -> Result.success(state)
         }
+        return result.map(SparkpediaEngine::syncCodexUnlocks)
     }
 
     /**
@@ -130,10 +130,12 @@ object WorldManager {
             return if (totalWalked >= travel.stepsRequired) {
                 val dest = WorldCatalog.locationById(travel.toLocationId)
                 events.add("Arrived at ${dest.name}!")
-                state.copy(
-                    currentLocationId = dest.id,
-                    discoveredLocationIds = state.discoveredLocationIds + dest.id,
-                    activeTravel = null,
+                SparkpediaEngine.syncCodexUnlocks(
+                    state.copy(
+                        currentLocationId = dest.id,
+                        discoveredLocationIds = state.discoveredLocationIds + dest.id,
+                        activeTravel = null,
+                    ),
                 )
             } else {
                 events.add("Walked +$effectiveSteps steps toward ${WorldCatalog.locationById(travel.toLocationId).name} ($totalWalked/${travel.stepsRequired}).")
@@ -160,8 +162,8 @@ object WorldManager {
 
         var newLevel = state.player.level
         var newXp = state.player.xp + xpGain
-        while (newXp >= newLevel * 150) {
-            newXp -= newLevel * 150
+        while (newXp >= (if (newLevel <= 0) 100 else newLevel * 150)) {
+            newXp -= (if (newLevel <= 0) 100 else newLevel * 150)
             newLevel += 1
         }
 

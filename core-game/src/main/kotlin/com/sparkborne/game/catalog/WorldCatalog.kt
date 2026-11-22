@@ -34,7 +34,7 @@ object WorldCatalog {
                 TravelRoute("loc_verdant_crossing", 3500),
                 TravelRoute("loc_tidebreak_harbor", 4500),
             ),
-            contractIds = listOf("exp_daily_ashlands_patrol"),
+            contractIds = listOf("exp_intro_ember_nest", "exp_daily_ashlands_patrol"),
             activities = listOf(
                 TownActivity(
                     id = "act_ember_mining",

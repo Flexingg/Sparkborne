@@ -74,12 +74,22 @@ class TelemetryRulesEngineTest {
     }
 
     @Test
-    fun `sleep and hydration incubate and auto-hatch starter egg with macro-driven affinity`() {
-        var state = GameCatalog.initialGameState()
+    fun `sleep and hydration incubate and auto-hatch egg with macro-driven affinity`() {
+        var state = GameCatalog.initialGameState().copy(
+            eggs = listOf(
+                com.sparkborne.game.model.MonsterEgg(
+                    id = "egg_test_01",
+                    name = "Warm Ember Egg",
+                    speciesSeed = "test_seed",
+                    requiredSleepMinutes = 900,
+                    requiredHydrationMl = 4500,
+                ),
+            ),
+        )
         assertEquals(1, state.eggs.size)
-        assertEquals(1, state.monsters.size)
+        assertEquals(0, state.monsters.size)
 
-        // Day 1 & Day 2 with high protein, 8h sleep, 2500mL water -> exceeds starter egg 900m sleep & 4500mL water
+        // Day 1 & Day 2 with high protein, 8h sleep, 2500mL water -> exceeds egg 900m sleep & 4500mL water
         for (day in listOf("2026-11-21", "2026-11-22")) {
             val summary = DailySummaryResponseDto(
                 goals = UserGoalDto(calories = 2200.0, protein = 160.0, carbs = 220.0, fat = 70.0, waterGoalMl = 2500.0),
@@ -92,8 +102,8 @@ class TelemetryRulesEngineTest {
             state = TelemetryRulesEngine.applyTelemetry(state, snap, delta, null).state
         }
 
-        assertTrue("Starter egg should have hatched", state.eggs.isEmpty())
-        assertEquals(2, state.monsters.size)
+        assertTrue("Egg should have hatched", state.eggs.isEmpty())
+        assertEquals(1, state.monsters.size)
         val hatched = state.monsters.last()
         assertEquals(MonsterAffinity.IRONCLAD, hatched.affinity)
         assertEquals("Ferrite Cub", hatched.name)
@@ -101,10 +111,21 @@ class TelemetryRulesEngineTest {
 
     @Test
     fun `monster evolves deterministically once XP threshold is reached`() {
-        var state = GameCatalog.initialGameState()
-        val starter = state.monsters.first()
-        state = state.copy(
-            monsters = listOf(starter.copy(xp = 140)),
+        val starter = com.sparkborne.game.model.MonsterCompanion(
+            id = "mon_test_ember",
+            name = "Spark Kit",
+            speciesId = "spark_kit",
+            stage = com.sparkborne.game.model.MonsterStage.HATCHLING,
+            level = 2,
+            xp = 140,
+            affinity = MonsterAffinity.EMBERHEART,
+            baseAttack = 7,
+            baseDefense = 3,
+            evolutionHistory = listOf("Spark Kit"),
+        )
+        val state = GameCatalog.initialGameState().copy(
+            monsters = listOf(starter),
+            activeMonsterId = starter.id,
         )
 
         val evolved = ExpeditionManager.evolveMonster(state, starter.id).getOrThrow()

@@ -48,7 +48,7 @@ class ExpeditionAndCombatTest {
             while (state.activeExpedition?.activeCombat != null && guardTurns < 25) {
                 val combat = state.activeExpedition!!.activeCombat!!
                 val action = when {
-                    combat.monsterSkillCooldown == 0 -> CombatAction.MonsterSkill
+                    state.activeMonster != null && combat.monsterSkillCooldown == 0 -> CombatAction.MonsterSkill
                     combat.playerMana >= 5 -> CombatAction.CastSpell("spl_spark_bolt")
                     else -> CombatAction.Strike
                 }
