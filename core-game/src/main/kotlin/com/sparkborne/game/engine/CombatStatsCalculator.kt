@@ -47,8 +47,9 @@ object CombatStatsCalculator {
             ((muscleAvgRank - 1.0) * weapon.muscleScalingFactor * 3.0) +
             (player.level * 1.5)
 
+        val collectibleCombatMult = 1.0 + CollectibleEngine.totalBonus(state, com.sparkborne.game.model.CollectibleBonusType.COMBAT_POWER_PERCENT) / 100.0
         val monsterWeaponSynergy = if (monster?.affinity == MonsterAffinity.EMBERHEART) 1.15 else 1.0
-        val finalWeaponDamage = (rawWeaponDamage * buffs.momentumStance.attackMultiplier * monsterWeaponSynergy)
+        val finalWeaponDamage = (rawWeaponDamage * buffs.momentumStance.attackMultiplier * monsterWeaponSynergy * collectibleCombatMult)
             .roundToInt()
             .coerceAtLeast(1)
 
@@ -67,7 +68,7 @@ object CombatStatsCalculator {
 
         val baseSpellPower = 6 + (player.level * 2) + armorSpellPower + buffs.carbsSpellPowerBonus
         val monsterSpellSynergy = if (monster?.affinity == MonsterAffinity.STORMSTRIDER) 1.25 else 1.0
-        val finalSpellPower = (baseSpellPower * buffs.momentumStance.spellMultiplier * monsterSpellSynergy)
+        val finalSpellPower = (baseSpellPower * buffs.momentumStance.spellMultiplier * monsterSpellSynergy * collectibleCombatMult)
             .roundToInt()
 
         val monsterSkillDamage = if (monster != null) {

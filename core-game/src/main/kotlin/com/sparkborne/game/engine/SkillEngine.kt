@@ -63,7 +63,8 @@ object SkillEngine {
         skill: SkillType,
     ): Int {
         val level = levelForXp(state.player.skillXp[skill] ?: 0)
-        val effPct = workEfficiencyPercent(level)
+        val effPct = workEfficiencyPercent(level) +
+            CollectibleEngine.totalBonus(state, com.sparkborne.game.model.CollectibleBonusType.WORK_EFFICIENCY_PERCENT)
         val multiplier = (100.0 / (100.0 + effPct)).coerceAtLeast(0.35)
         return (baseSteps * multiplier).roundToInt().coerceAtLeast((baseSteps * 0.35).roundToInt().coerceAtLeast(100))
     }

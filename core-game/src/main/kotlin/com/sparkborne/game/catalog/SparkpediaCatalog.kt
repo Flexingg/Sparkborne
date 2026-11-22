@@ -48,6 +48,15 @@ object SparkpediaCatalog {
             unlockHint = "Unlocked from the start.",
         ),
         CodexEntry(
+            id = "guide_collectibles_museum",
+            category = CodexCategory.GUIDES,
+            title = "Rare Collectibles & Museum",
+            subtitle = "12 Account-Wide Passive Relics",
+            summary = "Completing milestone cycles in regional Town Activities uncovers rare Collectibles that permanently boost your entire account.",
+            mechanicsDetail = "Each Collectible grants a permanent stacking bonus (+Work Efficiency, +Gold Yield, +Iron & Shards, +Egg Incubation Speed, or +Combat Power). View your progress and hints in Hero → Skills → Collection Log.",
+            unlockHint = "Unlocked from the start.",
+        ),
+        CodexEntry(
             id = "guide_muscle_scaling",
             category = CodexCategory.GUIDES,
             title = "Muscle Strength & Weapons",

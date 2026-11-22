@@ -156,9 +156,12 @@ object WorldManager {
             return state.copy(activeActivity = activeAct.copy(stepsProgress = remainder))
         }
 
-        val goldGain = completions * def.rewardGold
-        val ironGain = completions * def.rewardIron
-        val shardGain = completions * def.rewardShards
+        val goldBonusPct = CollectibleEngine.totalBonus(state, com.sparkborne.game.model.CollectibleBonusType.GOLD_YIELD_PERCENT)
+        val matBonusPct = CollectibleEngine.totalBonus(state, com.sparkborne.game.model.CollectibleBonusType.IRON_SHARD_YIELD_PERCENT)
+
+        val goldGain = kotlin.math.round(completions * def.rewardGold * (1.0 + goldBonusPct / 100.0)).toInt()
+        val ironGain = kotlin.math.round(completions * def.rewardIron * (1.0 + matBonusPct / 100.0)).toInt()
+        val shardGain = kotlin.math.round(completions * def.rewardShards * (1.0 + matBonusPct / 100.0)).toInt()
         val xpGain = completions * def.rewardXp
         val monXpGain = completions * def.rewardMonsterXp
 
@@ -169,12 +172,14 @@ object WorldManager {
             newLevel += 1
         }
 
+        val lifetimeActCompletions = (state.player.activityCompletions[def.id] ?: 0) + completions
         val updatedPlayer = state.player.copy(
             level = newLevel,
             xp = newXp,
             gold = state.player.gold + goldGain,
             ironOre = state.player.ironOre + ironGain,
             emberShards = state.player.emberShards + shardGain,
+            activityCompletions = state.player.activityCompletions + (def.id to lifetimeActCompletions),
         )
 
         val updatedMonsters = if (monXpGain > 0) {
@@ -211,6 +216,12 @@ object WorldManager {
             newCompletions = nextCompletions,
             events = events,
         )
-        return SparkpediaEngine.syncCodexUnlocks(withSkill)
+        val withCollectibles = CollectibleEngine.checkAndAwardCollectibles(
+            state = withSkill,
+            activityId = def.id,
+            lifetimeCompletions = lifetimeActCompletions,
+            events = events,
+        )
+        return SparkpediaEngine.syncCodexUnlocks(withCollectibles)
     }
 }

@@ -619,6 +619,68 @@ fun HeroTabScreen(
                         )
                     }
                 }
+
+                item {
+                    val discoveredCount = player.discoveredCollectibleIds.size
+                    val totalCount = com.sparkborne.game.engine.CollectibleEngine.catalog.size
+                    Spacer(Modifier.height(6.dp))
+                    RpgPanel(borderColor = colors.accentPrimary) {
+                        Text(
+                            "🏆 COLLECTION LOG (MUSEUM) · $discoveredCount / $totalCount",
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = colors.accentPrimary,
+                        )
+                        val activeBonuses = com.sparkborne.game.model.CollectibleBonusType.entries
+                            .mapNotNull { t ->
+                                val v = com.sparkborne.game.engine.CollectibleEngine.totalBonus(state, t)
+                                if (v > 0) "+$v% ${t.displayName}" else null
+                            }
+                        Text(
+                            if (activeBonuses.isEmpty()) {
+                                "Complete Town Activity milestones to uncover rare permanent account relics!"
+                            } else {
+                                "Active Passives: ${activeBonuses.joinToString(" · ")}"
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (activeBonuses.isEmpty()) colors.textMuted else colors.vitalityEmerald,
+                        )
+                    }
+                }
+
+                items(com.sparkborne.game.engine.CollectibleEngine.catalog, key = { it.id }) { col ->
+                    val found = col.id in player.discoveredCollectibleIds
+                    val done = player.activityCompletions[col.activityId] ?: 0
+                    RpgPanel(borderColor = if (found) colors.accentPrimary else colors.pixelBorder) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                Text(
+                                    if (found) "${col.icon} ${col.name}" else "❓ ??? (${col.regionName})",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.sp,
+                                    color = if (found) colors.accentPrimary else colors.textMuted,
+                                )
+                                Text(
+                                    if (found) col.lore else "Progress: $done / ${col.unlockCompletions} cycles in ${col.regionName}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = colors.textMuted,
+                                )
+                            }
+                            Text(
+                                "+${col.bonusValue}% ${col.bonusType.shortLabel.removePrefix("+% ")}",
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (found) colors.vitalityEmerald else colors.textMuted,
+                            )
+                        }
+                    }
+                }
             }
 
             HeroSubTab.SPELLS -> {

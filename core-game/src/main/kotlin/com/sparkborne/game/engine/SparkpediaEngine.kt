@@ -31,6 +31,7 @@ object SparkpediaEngine {
         unlock("guide_welcome")
         unlock("guide_step_bank")
         unlock("guide_skills_chests")
+        unlock("guide_collectibles_museum")
         unlock("guide_health_connect")
         unlock("guide_eastern_frontier")
         unlock("loc_emberhearth")

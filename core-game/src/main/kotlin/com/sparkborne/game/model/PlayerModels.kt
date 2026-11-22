@@ -165,6 +165,8 @@ data class PlayerState(
     val skillXp: Map<SkillType, Int> = emptyMap(),
     val skillChests: Map<SkillType, Int> = emptyMap(),
     val totalChestsOpened: Int = 0,
+    val activityCompletions: Map<String, Int> = emptyMap(),
+    val discoveredCollectibleIds: Set<String> = emptySet(),
 ) {
     fun skillLevel(skill: SkillType): Int =
         com.sparkborne.game.engine.SkillEngine.levelForXp(skillXp[skill] ?: 0)

@@ -123,9 +123,10 @@ object TelemetryRulesEngine {
             } else {
                 egg.macroProfile
             }
+            val eggSpeedMult = 1.0 + CollectibleEngine.totalBonus(state, com.sparkborne.game.model.CollectibleBonusType.EGG_INCUBATION_PERCENT) / 100.0
             val updatedEgg = egg.copy(
-                incubatedSleepMinutes = egg.incubatedSleepMinutes + delta.sleepMinutesDelta,
-                incubatedHydrationMl = egg.incubatedHydrationMl + delta.hydrationMlDelta,
+                incubatedSleepMinutes = egg.incubatedSleepMinutes + (delta.sleepMinutesDelta * eggSpeedMult).roundToInt(),
+                incubatedHydrationMl = egg.incubatedHydrationMl + (delta.hydrationMlDelta * eggSpeedMult).roundToInt(),
                 macroProfile = updatedMacro,
             )
             if (updatedEgg.isReadyToHatch) {
