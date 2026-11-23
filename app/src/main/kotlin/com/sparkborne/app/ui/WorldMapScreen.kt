@@ -243,7 +243,7 @@ fun WorldTabScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF36687E)) // Deep WalkScape sea color behind map edges
+            .background(Color(0xFF21647D)) // Seamless ocean color matching the hand-crafted world map
             .onSizeChanged { newSize ->
                 viewportSize = newSize
                 if (!hasCenteredInitially && newSize.width > 0 && newSize.height > 0) {
