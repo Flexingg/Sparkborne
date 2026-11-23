@@ -108,6 +108,7 @@ class HeroActions(
     val useConsumable: (String) -> Unit = {},
     val learnTalent: (String) -> Unit = {},
     val resetTalents: () -> Unit = {},
+    val updateAppearance: (com.sparkborne.game.model.HeroAppearance) -> Unit = {},
 )
 
 val LOADOUT_NAMES = listOf("Combat", "Skilling", "Boss")
@@ -383,7 +384,7 @@ private fun GearInspect(g: Inspect.Gear, state: GameState, actions: HeroActions,
         val owned = w.id in p.ownedWeaponIds || (w.forgeGoldCost == 0 && w.forgeIronCost == 0)
         val equipped = w.id == p.equippedWeaponId
         val r = weaponRarity(w)
-        Showcase(r.color) { PixelArtIcon(weaponArt(w.weaponClass, r), 96.dp) }
+        Showcase(r.color, height = 190.dp) { TryOn(heroLookOf(p).tryOn(w.id)) { PixelArtIcon(weaponArt(w.weaponClass, r), 72.dp) } }
         ItemTitle(w.name, r.color, "${r.label} ${w.weaponClass.displayName} · Weapon")
         GearStatus(equipped, owned)
         Flavor(weaponFlavor(w.weaponClass))
@@ -416,7 +417,7 @@ private fun GearInspect(g: Inspect.Gear, state: GameState, actions: HeroActions,
         val owned = a.id in p.ownedArmorIds || (a.forgeGoldCost == 0 && a.forgeIronCost == 0 && a.forgeShardsCost == 0)
         val equipped = a.id == equippedId
         val r = armorRarity(a)
-        Showcase(r.color) { PixelArtIcon(armorArt(slot, r), 96.dp) }
+        Showcase(r.color, height = 190.dp) { TryOn(heroLookOf(p).tryOn(a.id)) { PixelArtIcon(armorArt(slot, r), 72.dp) } }
         ItemTitle(a.name, r.color, "${r.label} ${slot.displayName} · Armor")
         GearStatus(equipped, owned)
         Flavor(armorFlavor(slot))
@@ -985,5 +986,17 @@ fun BannerFlag(letter: String, color: Color, height: Dp, sway: Boolean = true) {
             drawRect(color.copy(alpha = 0.5f), Offset(3 * u, h * 0.62f), Size(w - 6 * u, u))
         }
         Text8(letter, size = (height.value * 0.3f).sp, color = color, weight = FontWeight.ExtraBold, modifier = Modifier.offset(y = (-height * 0.06f)))
+    }
+}
+
+/** Item icon beside the hero wearing it — preview gear before you forge or equip it. */
+@Composable
+private fun TryOn(look: HeroLook, icon: @Composable () -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        icon()
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            HeroSprite(look, 150.dp, shadow = false)
+            Text8("TRY-ON", size = 8.sp, color = RpgTheme.colors.textMuted, letterSpacing = 2.sp)
+        }
     }
 }

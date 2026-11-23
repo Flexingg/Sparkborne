@@ -157,6 +157,7 @@ fun SparkborneRootScreen(
                     onUseConsumable = viewModel::useConsumable,
                     onLearnTalent = viewModel::learnTalent,
                     onResetTalents = viewModel::resetTalents,
+                    onUpdateAppearance = viewModel::updateAppearance,
                 )
 
                 SparkborneTab.MONSTERS -> MonstersTabScreen(
@@ -345,6 +346,17 @@ fun SparkborneRootScreen(
         }
 
         // 4. Full-Screen WalkScape-Style Sparkpedia Codex Overlay
+        // Character creation: shown until the hero has been forged (new saves, old saves, rebirth)
+        if (state.gameLoaded && !game.player.appearance.created) {
+            com.sparkborne.app.ui.hero.CharacterCreationScreen(
+                initial = game.player.appearance,
+                gearLook = com.sparkborne.app.ui.hero.heroLookOf(game.player),
+                isNew = true,
+                errorMessage = state.errorMessage,
+                onConfirm = viewModel::updateAppearance,
+            )
+        }
+
         if (state.showSparkpedia) {
             SparkpediaOverlay(
                 state = game,
@@ -354,7 +366,7 @@ fun SparkborneRootScreen(
 
         // 5. "While You Were Away" RPG Chronicle Modal
         val away = game.pendingAwaySummary
-        if (!state.showSparkpedia && away != null && away.hasAnythingToShow) {
+        if (!state.showSparkpedia && away != null && away.hasAnythingToShow && game.player.appearance.created) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()

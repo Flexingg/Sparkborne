@@ -54,6 +54,8 @@ data class SparkborneUiState(
     val selectedDate: String? = null,
     val bodyweightTrend: BodyweightTrend? = null,
     val gameState: GameState = GameCatalog.initialGameState(),
+    /** True once the saved game has been read from storage (guards the character-creation gate). */
+    val gameLoaded: Boolean = false,
     val availableUpdate: AppUpdateInfo? = null,
     val updateDownloadProgress: Float? = null,
     val updateStatusMessage: String? = null,
@@ -115,7 +117,7 @@ class SparkborneViewModel(application: Application) : AndroidViewModel(applicati
 
         viewModelScope.launch {
             gameRepository.observeGameState().collect { gameState ->
-                _uiState.update { it.copy(gameState = gameState) }
+                _uiState.update { it.copy(gameState = gameState, gameLoaded = true) }
             }
         }
 
@@ -566,6 +568,10 @@ class SparkborneViewModel(application: Application) : AndroidViewModel(applicati
         com.sparkborne.game.engine.CraftingEngine.craftRecipe(state, recipeId)
     }
 
+    fun updateAppearance(look: com.sparkborne.game.model.HeroAppearance) = runGameMutation { state ->
+        com.sparkborne.game.engine.AppearanceEngine.apply(state, look)
+    }
+
     fun learnTalent(nodeId: String) = runGameMutation { state ->
         com.sparkborne.game.engine.TalentEngine.learn(state, nodeId)
     }
@@ -663,7 +669,13 @@ class SparkborneViewModel(application: Application) : AndroidViewModel(applicati
      */
     fun resetNewJourney() {
         viewModelScope.launch {
-            val fresh = GameCatalog.initialGameState()
+            val previousLook = _uiState.value.gameState.player.appearance
+            val base = GameCatalog.initialGameState()
+            val fresh = base.copy(
+                player = base.player.copy(
+                    appearance = com.sparkborne.game.engine.AppearanceEngine.forRebirth(previousLook),
+                ),
+            )
             gameRepository.saveGameState(fresh)
             _uiState.update {
                 it.copy(

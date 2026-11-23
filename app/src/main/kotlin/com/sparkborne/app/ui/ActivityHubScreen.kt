@@ -613,10 +613,8 @@ private fun CurrentActionSpotlight(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    Image(
-                        painter = painterResource(R.drawable.pixel_hero_knight),
-                        contentDescription = "Hero",
-                        contentScale = ContentScale.Crop,
+                    com.sparkborne.app.ui.hero.HeroBust(
+                        look = com.sparkborne.app.ui.hero.heroLookOf(state.player),
                         modifier = Modifier
                             .size(40.dp)
                             .clip(CircleShape),

@@ -410,14 +410,12 @@ fun WorldTabScreen(
             val heroPxY = (heroWorldFrac.second * mapHeightPx).roundToInt()
             Box(
                 modifier = Modifier
-                    .offset { IntOffset(heroPxX - 22.dp.roundToPx(), heroPxY - 76.dp.roundToPx()) }
+                    .offset { IntOffset(heroPxX - 26.dp.roundToPx(), heroPxY - 96.dp.roundToPx()) }
                     .clickable { selectedTownId = state.currentLocationId },
             ) {
-                PixelSprite(
-                    drawableRes = R.drawable.pixel_hero_knight,
-                    contentDescription = "Hero Location",
-                    size = 44.dp,
-                    borderColor = Color(0xFFFFD166),
+                com.sparkborne.app.ui.hero.HeroSprite(
+                    look = com.sparkborne.app.ui.hero.heroLookOf(state.player),
+                    height = 66.dp,
                 )
             }
         }

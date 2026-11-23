@@ -269,6 +269,7 @@ fun WalkscapeTopHudBar(
 
         // 2. Top-Left Oversized Circular Hero Avatar Medallion (with live XP Ring, overhanging bottom edge!)
         HeroAvatarMedallion(
+            look = com.sparkborne.app.ui.hero.heroLookOf(game.player),
             xpFraction = xpFraction,
             accentColor = colors.accentPrimary,
             bgColor = colors.panelSurface,
@@ -322,6 +323,7 @@ private fun HudMiniIconButton(
 
 @Composable
 private fun HeroAvatarMedallion(
+    look: com.sparkborne.app.ui.hero.HeroLook,
     xpFraction: Float,
     accentColor: Color,
     bgColor: Color,
@@ -329,11 +331,6 @@ private fun HeroAvatarMedallion(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val context = LocalContext.current
-    val heroBitmap = remember {
-        BitmapFactory.decodeResource(context.resources, R.drawable.pixel_hero_knight).asImageBitmap()
-    }
-
     Box(
         modifier = modifier
             .size(60.dp)
@@ -343,11 +340,8 @@ private fun HeroAvatarMedallion(
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Image(
-            bitmap = heroBitmap,
-            contentDescription = "Hero Avatar",
-            contentScale = ContentScale.Crop,
-            filterQuality = FilterQuality.None,
+        com.sparkborne.app.ui.hero.HeroBust(
+            look = look,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(4.dp)
