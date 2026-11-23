@@ -29,12 +29,13 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 
-enum class SparkborneTab(val label: String, val badge: String) {
-    WORLD("World", "🗺"),
-    DELVE("Delve", "⚔"),
-    HERO("Hero", "🛡"),
-    MONSTERS("Beasts", "🐉"),
-    SYNC("Sync", "⚡"),
+enum class SparkborneTab(val label: String, val badge: String, val showInBottomBar: Boolean) {
+    WORLD("Map", "🗺", false),
+    HERO("Profile", "🛡", false),
+    ACTIVITY("Activity", "🏃", true),
+    INVENTORY("Inventory", "🎒", true),
+    MONSTERS("Beasts", "🐉", true),
+    SYNC("Settings", "⚙", true),
 }
 
 data class SparkborneUiState(
@@ -600,7 +601,7 @@ class SparkborneViewModel(application: Application) : AndroidViewModel(applicati
             gameRepository.updateState { state ->
                 ExpeditionManager.startExpedition(state, contractId, LocalDate.now())
             }.onSuccess {
-                _uiState.update { it.copy(selectedTab = SparkborneTab.DELVE, errorMessage = null) }
+                _uiState.update { it.copy(selectedTab = SparkborneTab.ACTIVITY, errorMessage = null) }
             }.onFailure { ex ->
                 _uiState.update { it.copy(errorMessage = ex.message ?: "Could not start contract") }
             }
@@ -641,7 +642,7 @@ class SparkborneViewModel(application: Application) : AndroidViewModel(applicati
                 if (_uiState.value.gameState.activeExpedition == null) {
                     startContractFromTown(com.sparkborne.game.engine.SparkpediaEngine.INTRO_CONTRACT_ID)
                 } else {
-                    selectTab(SparkborneTab.DELVE)
+                    selectTab(SparkborneTab.ACTIVITY)
                 }
             }
             com.sparkborne.game.model.IntroQuestStep.COMPLETED -> openSparkpedia()

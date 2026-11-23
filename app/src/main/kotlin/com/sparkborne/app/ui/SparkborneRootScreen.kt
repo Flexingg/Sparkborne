@@ -111,15 +111,32 @@ fun SparkborneRootScreen(
                     onSpendBankedStepsOnActivity = viewModel::spendBankedStepsOnActivity,
                 )
 
-                SparkborneTab.DELVE -> DelveTabScreen(
+                SparkborneTab.ACTIVITY -> ActivityTabScreen(
                     state = game,
                     errorMessage = state.errorMessage,
+                    onStartActivity = viewModel::startActivity,
+                    onStopActivity = viewModel::stopActivity,
+                    onCancelTravel = viewModel::cancelTravel,
+                    onSpendBankedStepsOnTravel = viewModel::spendBankedStepsOnTravel,
+                    onSpendBankedStepsOnActivity = viewModel::spendBankedStepsOnActivity,
                     onStartContract = viewModel::startExpedition,
                     onEnterNode = viewModel::enterCurrentNode,
                     onCombatAction = viewModel::performCombatAction,
-                    onAbandon = viewModel::abandonExpedition,
-                    onClearFinished = viewModel::clearFinishedExpedition,
+                    onAbandonDelve = viewModel::abandonExpedition,
+                    onClearFinishedDelve = viewModel::clearFinishedExpedition,
                     onSpendBankedStepsOnDelve = viewModel::spendBankedStepsOnDelve,
+                    onOpenMap = { viewModel.selectTab(SparkborneTab.WORLD) },
+                )
+
+                SparkborneTab.INVENTORY -> InventoryTabScreen(
+                    state = game,
+                    errorMessage = state.errorMessage,
+                    onOpenSkillChest = viewModel::openSkillChest,
+                    onCraftRecipe = viewModel::craftRecipe,
+                    onUseConsumable = viewModel::useConsumable,
+                    onForgeOrToggleTool = viewModel::forgeOrToggleTool,
+                    onSaveGearSet = viewModel::saveGearSet,
+                    onEquipGearSet = viewModel::equipGearSet,
                 )
 
                 SparkborneTab.HERO -> HeroTabScreen(
@@ -276,42 +293,46 @@ fun SparkborneRootScreen(
             }
         }
 
-        // 3. Floating WalkScape-Style Bottom Icon Dock
-        Row(
+        // 3. Pinned WalkScape-Style 4-Tab Bottom Bar (Activity, Inventory, Beasts, Settings)
+        Surface(
+            color = colors.obsidianBg.copy(alpha = 0.96f),
+            border = BorderStroke(1.dp, colors.pixelBorderBright.copy(alpha = 0.7f)),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .navigationBarsPadding()
-                .padding(horizontal = 12.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                .fillMaxWidth(),
         ) {
-            SparkborneTab.entries.forEach { tab ->
-                val selected = state.selectedTab == tab
-                Surface(
-                    shape = RoundedCornerShape(10.dp),
-                    color = if (selected) colors.panelElevated else colors.panelSurface.copy(alpha = 0.92f),
-                    border = BorderStroke(
-                        width = if (selected) 2.dp else 1.5.dp,
-                        color = if (selected) colors.accentPrimary else colors.pixelBorderBright,
-                    ),
-                    shadowElevation = 8.dp,
-                    modifier = Modifier
-                        .weight(1f)
-                        .clickable { viewModel.selectTab(tab) },
-                ) {
-                    Column(
-                        modifier = Modifier.padding(vertical = 8.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(2.dp),
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+                    .padding(horizontal = 8.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                SparkborneTab.entries.filter { it.showInBottomBar }.forEach { tab ->
+                    val selected = state.selectedTab == tab
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = if (selected) colors.panelElevated else Color.Transparent,
+                        border = if (selected) BorderStroke(1.dp, colors.accentPrimary.copy(alpha = 0.85f)) else null,
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { viewModel.selectTab(tab) },
                     ) {
-                        Text(tab.badge, fontSize = 16.sp)
-                        Text(
-                            text = tab.label.uppercase(),
-                            fontSize = 9.sp,
-                            fontFamily = FontFamily.Monospace,
-                            fontWeight = if (selected) FontWeight.ExtraBold else FontWeight.Medium,
-                            color = if (selected) colors.accentPrimary else colors.textMuted,
-                        )
+                        Column(
+                            modifier = Modifier.padding(vertical = 6.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(2.dp),
+                        ) {
+                            Text(tab.badge, fontSize = 16.sp)
+                            Text(
+                                text = tab.label.uppercase(),
+                                fontSize = 9.sp,
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = if (selected) FontWeight.ExtraBold else FontWeight.Medium,
+                                color = if (selected) colors.accentPrimary else colors.textMuted,
+                            )
+                        }
                     }
                 }
             }

@@ -103,6 +103,14 @@ fun WalkscapeTopHudBar(
         else -> null
     }
 
+    val stats = com.sparkborne.game.engine.CombatStatsCalculator.calculate(game)
+    val currentHp = game.activeExpedition?.runPlayerHp ?: stats.maxHp
+    val maxHp = game.activeExpedition?.runPlayerMaxHp ?: stats.maxHp
+    val context = LocalContext.current
+    val goldIcon = remember {
+        BitmapFactory.decodeResource(context.resources, R.drawable.icon_currency_gold).asImageBitmap()
+    }
+
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -124,9 +132,9 @@ fun WalkscapeTopHudBar(
             ) {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalArrangement = Arrangement.spacedBy(3.dp),
                 ) {
-                    // Top Row: Level Pill + Location Name + Compact Icon Triggers (🔔, 📖, ⚡)
+                    // Top Row: Level + Location Name + Clean Borderless Icon Triggers (🔔, 📖, ⚡)
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
@@ -137,25 +145,18 @@ fun WalkscapeTopHudBar(
                             horizontalArrangement = Arrangement.spacedBy(5.dp),
                             modifier = Modifier.weight(1f),
                         ) {
-                            Surface(
-                                shape = RoundedCornerShape(5.dp),
-                                color = colors.panelElevated,
-                                border = BorderStroke(1.dp, colors.accentPrimary.copy(alpha = 0.8f)),
-                            ) {
-                                Text(
-                                    text = "${player.level}",
-                                    fontFamily = FontFamily.Monospace,
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    color = colors.accentPrimary,
-                                    modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp),
-                                )
-                            }
+                            Text(
+                                text = "LV.${player.level}",
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = colors.accentPrimary,
+                            )
                             Text(
                                 text = locationTitle,
                                 fontFamily = FontFamily.Monospace,
                                 fontSize = 12.sp,
-                                fontWeight = FontWeight.ExtraBold,
+                                fontWeight = FontWeight.Bold,
                                 color = colors.textPrimary,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
@@ -163,50 +164,86 @@ fun WalkscapeTopHudBar(
                         }
 
                         Row(
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            HudMiniIconButton(
-                                label = if (alertCount > 0) "🔔$alertCount" else "🔔",
-                                highlighted = alertCount > 0 || showNotificationsPanel,
-                                highlightColor = colors.accentPrimary,
-                                onClick = onToggleNotifications,
+                            Text(
+                                text = if (alertCount > 0) "🔔$alertCount" else "🔔",
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (alertCount > 0 || showNotificationsPanel) colors.accentPrimary else colors.textMuted,
+                                modifier = Modifier.clickable(onClick = onToggleNotifications),
                             )
-                            HudMiniIconButton(
-                                label = if (game.unreadCodexIds.isNotEmpty()) "📖•" else "📖",
-                                highlighted = game.unreadCodexIds.isNotEmpty(),
-                                highlightColor = colors.accentPrimary,
-                                onClick = onOpenSparkpedia,
+                            Text(
+                                text = if (game.unreadCodexIds.isNotEmpty()) "📖•" else "📖",
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 12.sp,
+                                color = if (game.unreadCodexIds.isNotEmpty()) colors.accentPrimary else colors.textMuted,
+                                modifier = Modifier.clickable(onClick = onOpenSparkpedia),
                             )
-                            HudMiniIconButton(
-                                label = if (isSyncing) "…" else "⚡",
-                                highlighted = isSyncing,
-                                highlightColor = colors.accentSecondary,
-                                onClick = { if (!isSyncing) onSyncClick() },
+                            Text(
+                                text = if (isSyncing) "…" else "⚡",
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = colors.accentSecondary,
+                                modifier = Modifier.clickable(enabled = !isSyncing, onClick = onSyncClick),
                             )
                         }
                     }
 
-                    // Bottom Row: Step Bank AP + Compact Currencies
+                    // Bottom Row: Borderless Coins, Health, Combat Stats & Step Bank AP
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
+                        // Bare pixel gold coin + amount
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(3.dp),
+                        ) {
+                            Image(
+                                bitmap = goldIcon,
+                                contentDescription = "Gold",
+                                filterQuality = FilterQuality.None,
+                                modifier = Modifier.size(13.dp),
+                            )
+                            Text(
+                                text = "${player.gold}",
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Color(0xFFFFD166),
+                            )
+                        }
+
+                        // Health
                         Text(
-                            text = "🥾 ${compactSteps(player.savedSteps)}/${compactSteps(stepCap)}",
+                            text = "❤$currentHp/$maxHp",
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = colors.crimsonHp,
+                        )
+
+                        // Attack & Defense
+                        Text(
+                            text = "⚔${stats.weaponDamage} 🛡${stats.defense}",
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = colors.textPrimary,
+                        )
+
+                        // Step Bank AP
+                        Text(
+                            text = "🥾${compactSteps(player.savedSteps)}",
                             fontFamily = FontFamily.Monospace,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
                             color = colors.vitalityEmerald,
-                            maxLines = 1,
-                        )
-                        RpgCurrencyRow(
-                            gold = player.gold,
-                            iron = player.ironOre,
-                            shards = player.emberShards,
-                            showZeros = true,
-                            compact = true,
                         )
                     }
                 }
