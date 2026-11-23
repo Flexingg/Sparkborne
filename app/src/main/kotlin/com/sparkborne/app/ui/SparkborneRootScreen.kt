@@ -109,6 +109,7 @@ fun SparkborneRootScreen(
                     onVisitedShop = viewModel::onVisitedTownShop,
                     onSpendBankedStepsOnTravel = viewModel::spendBankedStepsOnTravel,
                     onSpendBankedStepsOnActivity = viewModel::spendBankedStepsOnActivity,
+                    onResetTalents = viewModel::resetTalents,
                 )
 
                 SparkborneTab.ACTIVITY -> ActivityTabScreen(
@@ -154,6 +155,8 @@ fun SparkborneRootScreen(
                     onEquipGearSet = viewModel::equipGearSet,
                     onCraftRecipe = viewModel::craftRecipe,
                     onUseConsumable = viewModel::useConsumable,
+                    onLearnTalent = viewModel::learnTalent,
+                    onResetTalents = viewModel::resetTalents,
                 )
 
                 SparkborneTab.MONSTERS -> MonstersTabScreen(

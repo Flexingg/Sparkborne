@@ -8,6 +8,8 @@ import com.sparkborne.game.model.GameState
 import com.sparkborne.game.model.LootBag
 import com.sparkborne.game.model.MonsterAffinity
 import com.sparkborne.game.model.MonsterEgg
+import com.sparkborne.game.model.TalentAbility
+import com.sparkborne.game.model.TalentStat
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -33,6 +35,7 @@ object CombatResolver {
         val combat = expedition.activeCombat ?: return state
 
         val stats = CombatStatsCalculator.calculate(state)
+        val player = state.player
         val monster = state.activeMonster
         val log = combat.combatLog.toMutableList()
 
@@ -45,10 +48,27 @@ object CombatResolver {
 
         when (action) {
             is CombatAction.Strike -> {
-                val raw = max(1, stats.weaponDamage - combat.enemy.defense)
+                var raw = max(1, stats.weaponDamage - combat.enemy.defense)
+                val tags = mutableListOf<String>()
+                if (TalentEngine.has(player, TalentAbility.CLEAVE_RHYTHM) && combat.turnNumber % 3 == 0) {
+                    raw = (raw * 1.6).roundToInt()
+                    tags += "Cleave Rhythm"
+                }
+                if (TalentEngine.has(player, TalentAbility.EXECUTIONER) && enemyHp * 100 < combat.enemy.maxHp * 30) {
+                    raw *= 2
+                    tags += "Execute"
+                }
                 enemyHp = max(0, enemyHp - raw)
                 playerMana = min(combat.playerMaxMana, playerMana + 2)
-                log.add("Turn ${combat.turnNumber}: You strike for $raw dmg (+2 Mana).")
+                val tagText = if (tags.isEmpty()) "" else " [${tags.joinToString()}]"
+                log.add("Turn ${combat.turnNumber}: You strike for $raw dmg$tagText (+2 Mana).")
+                if (TalentEngine.has(player, TalentAbility.BLOODTHIRST)) {
+                    val heal = min(combat.playerMaxHp - playerHp, max(1, raw / 5))
+                    if (heal > 0) {
+                        playerHp += heal
+                        log.add("Bloodthirst: +$heal HP.")
+                    }
+                }
             }
 
             is CombatAction.CastSpell -> {
@@ -62,6 +82,11 @@ object CombatResolver {
                     return state
                 }
                 playerMana -= spell.manaCost
+                if (TalentEngine.has(player, TalentAbility.ARCANE_OVERFLOW)) {
+                    val refund = (spell.manaCost * 0.4).roundToInt()
+                    playerMana = min(combat.playerMaxMana, playerMana + refund)
+                    if (refund > 0) log.add("Arcane Overflow: +$refund Mana refunded.")
+                }
                 if (spell.basePower > 0) {
                     val dmg = max(1, spell.basePower + stats.spellPower - (combat.enemy.defense / 2))
                     enemyHp = max(0, enemyHp - dmg)
@@ -90,8 +115,13 @@ object CombatResolver {
                     log.add("Companion skill is on cooldown.")
                     return state
                 }
-                monsterCooldown = 3
-                val skillDmg = max(1, stats.monsterSkillDamage - (combat.enemy.defense / 2))
+                monsterCooldown = if (TalentEngine.has(player, TalentAbility.BEASTBOND)) 2 else 3
+                val alpha = TalentEngine.has(player, TalentAbility.PACK_ALPHA)
+                val skillDmg = (max(1, stats.monsterSkillDamage - (combat.enemy.defense / 2)) * (if (alpha) 1.5 else 1.0)).roundToInt()
+                if (alpha) {
+                    playerShield += 8
+                    log.add("Pack Alpha: +8 Shield.")
+                }
                 enemyHp = max(0, enemyHp - skillDmg)
                 when (monster.affinity) {
                     MonsterAffinity.IRONCLAD -> {
@@ -141,6 +171,16 @@ object CombatResolver {
         playerHp = max(0, playerHp - hpDamage)
         log.add("${combat.enemy.name} hits for $hpDamage HP" + if (absorbedByShield > 0) " ($absorbedByShield blocked)." else ".")
 
+        var lastStandUsed = combat.lastStandUsed
+        if (playerHp <= 0 && !lastStandUsed && TalentEngine.has(player, TalentAbility.UNBREAKABLE)) {
+            playerHp = 1
+            lastStandUsed = true
+            log.add("Unbreakable: you refuse to fall! (1 HP)")
+        }
+        if (playerHp > 0 && TalentEngine.has(player, TalentAbility.MANA_FONT)) {
+            playerMana = min(combat.playerMaxMana, playerMana + 3)
+        }
+
         // Check player defeat -> roguelike wipe!
         if (playerHp <= 0) {
             return failExpeditionAndWipeLoot(
@@ -157,6 +197,7 @@ object CombatResolver {
             playerShield = playerShield,
             monsterSkillCooldown = monsterCooldown,
             turnNumber = combat.turnNumber + 1,
+            lastStandUsed = lastStandUsed,
             combatLog = log.takeLast(12),
         )
 
@@ -239,10 +280,10 @@ object CombatResolver {
             emptyList()
         }
 
-        val totalGold = expedition.unbankedLoot.gold + contract.baseRewardGold
+        val totalGold = ((expedition.unbankedLoot.gold + contract.baseRewardGold) * TalentEngine.pct(state.player, TalentStat.GOLD_PCT)).roundToInt()
         val totalShards = expedition.unbankedLoot.emberShards + contract.baseRewardShards
         val totalIron = expedition.unbankedLoot.ironOre + contract.baseRewardIron
-        val totalXp = expedition.unbankedLoot.xp + (60 * contract.difficulty.rewardMultiplier).roundToInt()
+        val totalXp = ((expedition.unbankedLoot.xp + (60 * contract.difficulty.rewardMultiplier).roundToInt()) * TalentEngine.pct(state.player, TalentStat.HERO_XP_PCT)).roundToInt()
         val totalEggs = expedition.unbankedLoot.eggs + bonusEgg
 
         var newLevel = state.player.level

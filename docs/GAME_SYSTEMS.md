@@ -117,3 +117,21 @@ Every Town Activity drops matching raw **Materials** (*Basalt Ore, Moonleaf Herb
 ## 9. "While You Were Away" Chronicle (`AwaySummary`)
 
 Whenever Health Connect, SparkyFitness, or your phone pedometer banks new progress while you were away, Sparkborne accumulates it into `GameState.pendingAwaySummary` and greets you with a dismissible **🌙 While You Were Away** modal summarizing Steps Banked (AP), Lifting Volume added, Sleep/Hydration infused, and Hatched Companions.
+
+## 10. Talent Trees & the Shrine of Unbinding (`TalentEngine.kt`, `TalentCatalog.kt`)
+
+**Talent points:** 1 per Hero Level, plus 1 for every 5 Skill Levels gained across all skills.
+
+**Three trees**, each 5 tiers on a 3-column grid. A tier-N talent needs `N × 2` points already spent in that tree, plus its parent talent.
+
+| Tree | Root | Path choice (tier 3, pick one) | Capstone (tier 5, pick one) |
+|---|---|---|---|
+| ⚔ Warpath | Tempered Strikes (+4% ATK/rank) | **Bloodthirst**: Strikes heal 20% of damage dealt · **Cleave Rhythm**: every 3rd turn, Strike deals +60% | **Unbreakable**: survive one killing blow per fight at 1 HP · **Executioner**: double Strike damage below 30% enemy HP |
+| 🥾 Wayfarer | Trailborn (+3% Work Efficiency/rank) | **Pathfinder**: roads take 20% fewer steps · **Prospector**: +1 material per activity cycle | **Fortune's Road**: +25% gold from activities & delves · **Master Artisan**: +1 brew per craft |
+| ✦ Arcana | Kindled Mind (+5% Spell Power/rank) | **Mana Font**: +3 Mana at the end of each combat turn · **Beastbond**: companion skill cooldown 3 → 2 | **Arcane Overflow**: spells refund 40% Mana · **Pack Alpha**: companion skills +50% damage and +8 Shield |
+
+Path choices and capstones are **mutually exclusive**. Choosing one seals its rival, and each capstone can only be reached from its own path. Passive talents add Max HP, Defense, Max Mana, Beast Power, Step Bank capacity, Bonus Yield, Hero XP, Skill XP and Egg Incubation.
+
+**Effects hook into:** `CombatStatsCalculator` (stats), `CombatResolver` (combat abilities; `ActiveCombatState.lastStandUsed`), `SkillEngine` (efficiency), `WorldManager` (yields, XP, Prospector, Pathfinder travel), `CraftingEngine` (Master Artisan), `TelemetryRulesEngine` (egg speed) and `PlayerState.maxStepBankCapacity()`.
+
+**Shrine of Unbinding (Stormspire Citadel):** returns every spent point. It only works while you are in Stormspire and not on a delve. The first unbinding is free; after that each one costs `60g × resets` (max 400g).

@@ -185,6 +185,7 @@ fun WorldTabScreen(
     onVisitedShop: () -> Unit = {},
     onSpendBankedStepsOnTravel: () -> Unit = {},
     onSpendBankedStepsOnActivity: (Int?) -> Unit = {},
+    onResetTalents: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
@@ -488,6 +489,7 @@ fun WorldTabScreen(
                     onVisitedShop = onVisitedShop,
                     onSpendBankedStepsOnTravel = onSpendBankedStepsOnTravel,
                     onSpendBankedStepsOnActivity = onSpendBankedStepsOnActivity,
+                    onResetTalents = onResetTalents,
                 )
             }
         }
@@ -572,6 +574,7 @@ private fun TownSheetContent(
     onVisitedShop: () -> Unit = {},
     onSpendBankedStepsOnTravel: () -> Unit = {},
     onSpendBankedStepsOnActivity: (Int?) -> Unit = {},
+    onResetTalents: () -> Unit = {},
 ) {
     val colors = RpgTheme.colors
     val elemColor = elementColor(town.element)
@@ -626,7 +629,7 @@ private fun TownSheetContent(
         if (!isHere) {
             if (directRoute != null) {
                 RpgActionButton(
-                    text = "WALK HERE (${directRoute.stepsRequired} STEPS)",
+                    text = "WALK HERE (${com.sparkborne.game.engine.TalentEngine.travelSteps(state.player, directRoute.stepsRequired)} STEPS)",
                     onClick = { onStartTravel(town.id) },
                     enabled = state.activeTravel == null,
                     containerColor = elemColor,
@@ -639,6 +642,11 @@ private fun TownSheetContent(
                     color = colors.textMuted,
                 )
             }
+        }
+
+        // Shrine of Unbinding (talent reset) lives in Stormspire Citadel
+        if (town.id == com.sparkborne.game.catalog.TalentCatalog.SHRINE_LOCATION_ID) {
+            com.sparkborne.app.ui.hero.ShrineTownRow(state = state, onReset = onResetTalents)
         }
 
         // Section Pills

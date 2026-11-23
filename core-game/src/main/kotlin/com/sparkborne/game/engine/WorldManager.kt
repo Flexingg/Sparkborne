@@ -22,17 +22,18 @@ object WorldManager {
         val route = current.routes.firstOrNull { it.destinationId == destinationId }
             ?: return Result.failure(IllegalStateException("No direct road from ${current.name} to that destination."))
         val dest = WorldCatalog.locationById(destinationId)
+        val steps = TalentEngine.travelSteps(state.player, route.stepsRequired)
 
         return Result.success(
             state.copy(
                 activeTravel = ActiveTravel(
                     fromLocationId = current.id,
                     toLocationId = dest.id,
-                    stepsRequired = route.stepsRequired,
+                    stepsRequired = steps,
                     stepsWalked = 0,
                 ),
                 activeActivity = null,
-                recentLog = (listOf("Set out on the road to ${dest.name} (${route.stepsRequired} steps).") + state.recentLog).take(30),
+                recentLog = (listOf("Set out on the road to ${dest.name} ($steps steps).") + state.recentLog).take(30),
             ),
         )
     }
@@ -157,13 +158,16 @@ object WorldManager {
         }
 
         val toolYieldPct = ToolbeltEngine.bonusYieldPercent(state, skill)
-        val goldBonusPct = CollectibleEngine.totalBonus(state, com.sparkborne.game.model.CollectibleBonusType.GOLD_YIELD_PERCENT) + toolYieldPct
-        val matBonusPct = CollectibleEngine.totalBonus(state, com.sparkborne.game.model.CollectibleBonusType.IRON_SHARD_YIELD_PERCENT) + toolYieldPct
+        val talentYieldPct = TalentEngine.stat(state.player, com.sparkborne.game.model.TalentStat.YIELD_PCT)
+        val goldBonusPct = CollectibleEngine.totalBonus(state, com.sparkborne.game.model.CollectibleBonusType.GOLD_YIELD_PERCENT) + toolYieldPct +
+            talentYieldPct + TalentEngine.stat(state.player, com.sparkborne.game.model.TalentStat.GOLD_PCT)
+        val matBonusPct = CollectibleEngine.totalBonus(state, com.sparkborne.game.model.CollectibleBonusType.IRON_SHARD_YIELD_PERCENT) + toolYieldPct + talentYieldPct
 
         val goldGain = kotlin.math.round(completions * def.rewardGold * (1.0 + goldBonusPct / 100.0)).toInt()
         val ironGain = kotlin.math.round(completions * def.rewardIron * (1.0 + matBonusPct / 100.0)).toInt()
         val shardGain = kotlin.math.round(completions * def.rewardShards * (1.0 + matBonusPct / 100.0)).toInt()
-        val xpGain = completions * def.rewardXp
+        val xpGain = kotlin.math.round(completions * def.rewardXp * TalentEngine.pct(state.player, com.sparkborne.game.model.TalentStat.HERO_XP_PCT)).toInt()
+        val skillXpGain = kotlin.math.round(completions * def.rewardXp * TalentEngine.pct(state.player, com.sparkborne.game.model.TalentStat.SKILL_XP_PCT)).toInt()
         val monXpGain = completions * def.rewardMonsterXp
 
         var newLevel = state.player.level
@@ -175,7 +179,8 @@ object WorldManager {
 
         val lifetimeActCompletions = (state.player.activityCompletions[def.id] ?: 0) + completions
         val droppedMat = CraftingEngine.materialForSkill(skill)
-        val nextMaterials = state.player.materials + (droppedMat to ((state.player.materials[droppedMat] ?: 0) + completions))
+        val matPerCycle = if (TalentEngine.has(state.player, com.sparkborne.game.model.TalentAbility.PROSPECTOR)) 2 else 1
+        val nextMaterials = state.player.materials + (droppedMat to ((state.player.materials[droppedMat] ?: 0) + completions * matPerCycle))
         val remainingBoostCharges = (state.player.activeStepBoostCharges - completions).coerceAtLeast(0)
 
         val updatedPlayer = state.player.copy(
@@ -218,7 +223,7 @@ object WorldManager {
         val withSkill = SkillEngine.awardSkillProgress(
             state = baseNext,
             skill = skill,
-            xpGain = xpGain,
+            xpGain = skillXpGain,
             previousCompletions = prevCompletions,
             newCompletions = nextCompletions,
             events = events,

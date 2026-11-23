@@ -62,6 +62,7 @@ import kotlin.math.sin
 enum class CharacterPage(val label: String, val glyph: String) {
     GEAR("Gear", "⚔"),
     SKILLS("Skills", "⚒"),
+    TALENTS("Talents", "❖"),
     SPELLS("Spells", "✦"),
     RELICS("Relics", "♜"),
 }
@@ -105,6 +106,7 @@ fun CharacterScreen(
                     when (pg) {
                         CharacterPage.GEAR -> GearPage(state, heroPortrait, companionPortrait, open)
                         CharacterPage.SKILLS -> SkillsPage(state, open)
+                        CharacterPage.TALENTS -> TalentsPage(state, actions, open)
                         CharacterPage.SPELLS -> SpellsPage(state, open)
                         CharacterPage.RELICS -> RelicsPage(state, open)
                     }

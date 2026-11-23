@@ -173,6 +173,7 @@ data class PlayerState(
     val materials: Map<MaterialType, Int> = emptyMap(),
     val consumables: Map<String, Int> = emptyMap(),
     val activeStepBoostCharges: Int = 0,
+    val talents: TalentState = TalentState(),
     val actionBanks: Map<ActionBankType, Int> = mapOf(
         ActionBankType.PUSH_VOLUME to 500,
         ActionBankType.PULL_LEGS_VOLUME to 500,
@@ -217,7 +218,8 @@ data class PlayerState(
             .filter { it != MuscleGroup.OTHER }
             .sumOf { (muscleStrengthRank(it) - 1).coerceAtLeast(0).toLong() }
         val muscleBonus = extraMuscleRanks * 10_000L
-        return (base + levelBonus + muscleBonus).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+        val talentMult = 1.0 + com.sparkborne.game.engine.TalentEngine.stat(this, TalentStat.STEP_BANK_PCT) / 100.0
+        return ((base + levelBonus + muscleBonus) * talentMult).toLong().coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
     }
 
     fun xpToNextLevel(): Int = if (level <= 0) 100 else level * 150

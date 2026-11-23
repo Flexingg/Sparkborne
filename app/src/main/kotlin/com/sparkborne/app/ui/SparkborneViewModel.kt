@@ -566,6 +566,14 @@ class SparkborneViewModel(application: Application) : AndroidViewModel(applicati
         com.sparkborne.game.engine.CraftingEngine.craftRecipe(state, recipeId)
     }
 
+    fun learnTalent(nodeId: String) = runGameMutation { state ->
+        com.sparkborne.game.engine.TalentEngine.learn(state, nodeId)
+    }
+
+    fun resetTalents() = runGameMutation { state ->
+        com.sparkborne.game.engine.TalentEngine.reset(state)
+    }
+
     fun useConsumable(recipeId: String) = runGameMutation { state ->
         com.sparkborne.game.engine.CraftingEngine.useConsumable(state, recipeId)
     }

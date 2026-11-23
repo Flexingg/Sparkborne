@@ -67,6 +67,7 @@ object SkillEngine {
         val effPct = workEfficiencyPercent(level) +
             CollectibleEngine.totalBonus(state, com.sparkborne.game.model.CollectibleBonusType.WORK_EFFICIENCY_PERCENT) +
             ToolbeltEngine.workEfficiencyBonus(state, skill) +
+            TalentEngine.stat(state.player, com.sparkborne.game.model.TalentStat.WORK_EFF_PCT) +
             brewBoost
         val multiplier = (100.0 / (100.0 + effPct)).coerceAtLeast(0.35)
         return (baseSteps * multiplier).roundToInt().coerceAtLeast((baseSteps * 0.35).roundToInt().coerceAtLeast(100))
