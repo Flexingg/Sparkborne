@@ -40,7 +40,8 @@ import com.sparkborne.game.model.MaterialType
 import com.sparkborne.game.model.SkillType
 
 /**
- * Dedicated Inventory, Materials, Skill Chests, Crafting & Toolbelt Screen (bottom bar "Inventory").
+ * Inventory tab: the adventurer's pack (coin purse, slot-grid bag and cauldron workshop) from
+ * `ui/hero/BagScreen.kt`.
  */
 @Composable
 fun InventoryTabScreen(
@@ -52,265 +53,22 @@ fun InventoryTabScreen(
     onForgeOrToggleTool: (String) -> Unit,
     onSaveGearSet: (Int, String) -> Unit,
     onEquipGearSet: (Int) -> Unit,
+    onForgeOrEquipWeapon: (String) -> Unit = {},
+    onForgeOrEquipArmor: (String) -> Unit = {},
+    onUnlockOrAttuneSpell: (String) -> Unit = {},
 ) {
-    val colors = RpgTheme.colors
-    val player = state.player
-
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 14.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        errorMessage?.let { err ->
-            item {
-                RpgPanel(borderColor = colors.crimsonHp) {
-                    Text(err, color = colors.crimsonHp, style = MaterialTheme.typography.bodySmall)
-                }
-            }
-        }
-
-        // 1. Pouch Summary (Currencies + Step Bank)
-        item {
-            RpgPanel(borderColor = colors.accentPrimary) {
-                Text(
-                    "🎒 ADVENTURER'S POUCH",
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = colors.accentPrimary,
-                )
-                RpgCurrencyRow(
-                    gold = player.gold,
-                    iron = player.ironOre,
-                    shards = player.emberShards,
-                    showZeros = true,
-                    compact = false,
-                )
-                Text(
-                    "🥾 Step Bank: %,d / %,d AP".format(player.savedSteps, player.maxStepBankCapacity()),
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = 11.sp,
-                    color = colors.vitalityEmerald,
-                )
-            }
-        }
-
-        // 2. Skill Chests (if any ready)
-        if (player.totalSkillChests() > 0) {
-            item {
-                RpgPanel(borderColor = colors.vitalityEmerald) {
-                    Text(
-                        "🎁 SKILL CHESTS (${player.totalSkillChests()} READY · EGG EVERY 5TH)",
-                        fontFamily = FontFamily.Monospace,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = colors.vitalityEmerald,
-                    )
-                    player.skillChests.entries.filter { it.value > 0 }.forEach { (skill, count) ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text("${skill.icon} ${skill.displayName} Chest x$count", fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                            RpgActionButton(
-                                text = "OPEN",
-                                onClick = { onOpenSkillChest(skill) },
-                                containerColor = colors.vitalityEmerald,
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
-        // 3. Materials Satchel
-        item {
-            RpgPanel(borderColor = colors.accentSecondary) {
-                Text(
-                    "🧺 MATERIALS SATCHEL",
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = colors.accentSecondary,
-                )
-                if (player.activeStepBoostCharges > 0) {
-                    Text(
-                        "⚡ Trailblazer Brew Active: +25% Work Efficiency (${player.activeStepBoostCharges} cycles left)",
-                        fontFamily = FontFamily.Monospace,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = colors.vitalityEmerald,
-                    )
-                }
-                MaterialType.entries.chunked(2).forEach { pair ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        pair.forEach { mat ->
-                            val count = player.materials[mat] ?: 0
-                            Surface(
-                                shape = RoundedCornerShape(6.dp),
-                                color = colors.panelElevated,
-                                border = BorderStroke(1.dp, if (count > 0) colors.accentSecondary else colors.pixelBorder),
-                                modifier = Modifier.weight(1f),
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    Text("${mat.icon} ${mat.displayName.substringBefore(" ")}", fontSize = 11.sp, color = colors.textPrimary)
-                                    Text(
-                                        "x$count",
-                                        fontFamily = FontFamily.Monospace,
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = if (count > 0) colors.accentPrimary else colors.textMuted,
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // 4. Consumables & Crafting Workshop
-        item {
-            Text(
-                "COOKING, ALCHEMY & CONSUMABLES",
-                style = MaterialTheme.typography.labelLarge,
-                color = colors.accentPrimary,
-                fontFamily = FontFamily.Monospace,
-            )
-        }
-
-        items(CraftingEngine.recipes, key = { it.id }) { recipe ->
-            val ownedQty = player.consumables[recipe.id] ?: 0
-            val tier = CraftingEngine.qualityTierFor(state, recipe)
-            val reqText = recipe.requiredMaterials.entries.joinToString(" · ") { (m, qty) ->
-                val have = player.materials[m] ?: 0
-                "${m.icon}$have/$qty"
-            } + if (recipe.goldCost > 0) " · ${recipe.goldCost}g" else ""
-
-            RpgPanel(borderColor = if (ownedQty > 0) colors.vitalityEmerald else colors.pixelBorder) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                        Text(
-                            "${recipe.icon} ${recipe.name}" + if (ownedQty > 0) " (x$ownedQty)" else "",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 13.sp,
-                        )
-                        Text(
-                            "${tier.displayName} Quality (${recipe.craftSkill.displayName} Lv.${player.skillLevel(recipe.craftSkill)})",
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 10.sp,
-                            color = colors.accentPrimary,
-                        )
-                        Text(recipe.description, style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
-                        Text(reqText, fontFamily = FontFamily.Monospace, fontSize = 10.sp, color = colors.accentSecondary)
-                    }
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                        horizontalAlignment = Alignment.End,
-                    ) {
-                        RpgActionButton(
-                            text = "CRAFT",
-                            onClick = { onCraftRecipe(recipe.id) },
-                            containerColor = colors.accentPrimary,
-                        )
-                        if (ownedQty > 0) {
-                            RpgActionButton(
-                                text = "USE",
-                                onClick = { onUseConsumable(recipe.id) },
-                                containerColor = colors.vitalityEmerald,
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
-        // 5. Toolbelt & Gear Set Presets
-        item {
-            val presetNames = listOf("Combat", "Skilling", "Boss")
-            RpgPanel(borderColor = colors.accentSecondary) {
-                Text(
-                    "🧰 TOOLBELT (${player.equippedToolIds.size}/${player.maxToolbeltSlots()}) & GEAR SETS",
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = colors.accentSecondary,
-                )
-                if (player.equippedToolIds.isNotEmpty()) {
-                    player.equippedToolIds.mapNotNull(ToolbeltEngine::toolById).forEach { tool ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text("${tool.icon} ${tool.name} (+${tool.workEfficiencyBonusPercent}% Eff)", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                            RpgActionButton(
-                                text = "REMOVE",
-                                onClick = { onForgeOrToggleTool(tool.id) },
-                                containerColor = colors.ironSteel,
-                            )
-                        }
-                    }
-                }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    presetNames.forEachIndexed { idx, defaultName ->
-                        val saved = player.gearSets.firstOrNull { it.slotIndex == idx }
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = colors.panelElevated,
-                            border = BorderStroke(1.dp, if (saved != null) colors.accentPrimary else colors.pixelBorder),
-                            modifier = Modifier.weight(1f),
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(6.dp),
-                                verticalArrangement = Arrangement.spacedBy(4.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                            ) {
-                                Text(
-                                    saved?.name ?: defaultName,
-                                    fontFamily = FontFamily.Monospace,
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = if (saved != null) colors.accentPrimary else colors.textMuted,
-                                    maxLines = 1,
-                                )
-                                if (saved != null) {
-                                    RpgActionButton(
-                                        text = "EQUIP",
-                                        onClick = { onEquipGearSet(idx) },
-                                        containerColor = colors.vitalityEmerald,
-                                    )
-                                }
-                                RpgActionButton(
-                                    text = "SAVE",
-                                    onClick = { onSaveGearSet(idx, defaultName) },
-                                    containerColor = colors.accentSecondary,
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        item { Spacer(Modifier.height(24.dp)) }
-    }
+    val actions = com.sparkborne.app.ui.hero.HeroActions(
+            forgeOrEquipWeapon = onForgeOrEquipWeapon,
+            forgeOrEquipArmor = onForgeOrEquipArmor,
+            unlockOrAttuneSpell = onUnlockOrAttuneSpell,
+            openSkillChest = onOpenSkillChest,
+            forgeOrToggleTool = onForgeOrToggleTool,
+            saveGearSet = onSaveGearSet,
+            equipGearSet = onEquipGearSet,
+            craftRecipe = onCraftRecipe,
+            useConsumable = onUseConsumable,
+        )
+    com.sparkborne.app.ui.hero.BagScreen(state = state, errorMessage = errorMessage, actions = actions)
 }
 
 /**
