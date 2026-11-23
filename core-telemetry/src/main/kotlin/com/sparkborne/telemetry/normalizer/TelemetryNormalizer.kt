@@ -78,6 +78,8 @@ object TelemetryNormalizer {
             if (lifting.totalVolumeKg > 0.0) put("lifting", "SparkyFitness (Liftosaur)")
         }
 
+        val estimatedBurn = round2(steps * 0.04 + lifting.totalVolumeKg * 0.025)
+
         val base = DailyTelemetrySnapshot(
             date = date,
             goals = goals,
@@ -91,6 +93,7 @@ object TelemetryNormalizer {
             contentHash = "",
             syncedAtEpochMs = syncedAtEpochMs,
             metricSources = sources,
+            activeCaloriesBurned = estimatedBurn,
         )
 
         return base.copy(contentHash = SnapshotIdempotency.computeContentHash(base))

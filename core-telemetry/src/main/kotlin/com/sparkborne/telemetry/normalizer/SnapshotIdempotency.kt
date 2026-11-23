@@ -58,6 +58,7 @@ object SnapshotIdempotency {
         val prevCalories = previous?.nutrition?.calories ?: 0.0
         val prevProtein = previous?.nutrition?.proteinGrams ?: 0.0
         val prevTotalLift = previous?.lifting?.totalVolumeKg ?: 0.0
+        val prevBurn = previous?.activeCaloriesBurned ?: 0.0
 
         val muscleDeltas = buildMap {
             for ((group, currentVol) in current.lifting.byMuscleGroup) {
@@ -79,6 +80,7 @@ object SnapshotIdempotency {
             proteinGramsDelta = round2(max(0.0, current.nutrition.proteinGrams - prevProtein)),
             totalLiftingVolumeKgDelta = round2(max(0.0, current.lifting.totalVolumeKg - prevTotalLift)),
             effectiveMuscleVolumeKgDeltas = muscleDeltas,
+            activeCaloriesBurnedDelta = round2(max(0.0, current.activeCaloriesBurned - prevBurn)),
         )
     }
 

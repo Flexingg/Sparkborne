@@ -214,7 +214,7 @@ object TelemetryRulesEngine {
             dailyCreditedSteps = updatedCreditedMap,
         )
 
-        // 6. Bank ALL reconciled steps directly into the Step Bank (Action Points!)
+        // 6. Bank ALL reconciled real-world fitness metrics into their Action Point Banks!
         var stepsAccepted = 0
         if (reconciledDelta.stepsDelta > 0) {
             val effectiveSteps = (reconciledDelta.stepsDelta * stance.stepEfficiencyMultiplier).roundToInt()
@@ -222,8 +222,41 @@ object TelemetryRulesEngine {
             nextState = bankedState
             stepsAccepted = accepted
             if (accepted > 0) {
-                events.add("Banked +$accepted steps (${nextState.player.savedSteps}/${nextState.player.maxStepBankCapacity()}).")
+                events.add("Banked +$accepted steps (${nextState.player.savedSteps}/${ActionBankManager.capacityOf(nextState.player, com.sparkborne.game.model.ActionBankType.STEPS)}).")
             }
+        }
+
+        // 6b. Bank Push Volume (Chest/Shoulders/Triceps) & Pull/Legs Volume from lifting deltas
+        var pushDeltaKg = 0.0
+        var pullLegsDeltaKg = 0.0
+        for ((group, volDelta) in delta.effectiveMuscleVolumeKgDeltas) {
+            if (volDelta > 0.0) {
+                if (ActionBankManager.isPushMuscle(group)) {
+                    pushDeltaKg += volDelta
+                } else {
+                    pullLegsDeltaKg += volDelta
+                }
+            }
+        }
+        if (pushDeltaKg > 0.0) {
+            val (s, acc) = ActionBankManager.deposit(nextState, com.sparkborne.game.model.ActionBankType.PUSH_VOLUME, pushDeltaKg.roundToInt())
+            nextState = s
+            if (acc > 0) events.add("💪 Banked +${acc}kg Push Volume (Mining/Smithing AP).")
+        }
+        if (pullLegsDeltaKg > 0.0) {
+            val (s, acc) = ActionBankManager.deposit(nextState, com.sparkborne.game.model.ActionBankType.PULL_LEGS_VOLUME, pullLegsDeltaKg.roundToInt())
+            nextState = s
+            if (acc > 0) events.add("🪓 Banked +${acc}kg Pull/Legs Volume (Woodcutting/Fishing AP).")
+        }
+        if (delta.hydrationMlDelta > 0) {
+            val (s, acc) = ActionBankManager.deposit(nextState, com.sparkborne.game.model.ActionBankType.HYDRATION_ML, delta.hydrationMlDelta)
+            nextState = s
+            if (acc > 0) events.add("💧 Banked +${acc}mL Hydration (Diving/Alchemy AP).")
+        }
+        if (delta.activeCaloriesBurnedDelta > 0.0) {
+            val (s, acc) = ActionBankManager.deposit(nextState, com.sparkborne.game.model.ActionBankType.CALORIES_BURNT, delta.activeCaloriesBurnedDelta.roundToInt())
+            nextState = s
+            if (acc > 0) events.add("🔥 Banked +${acc}kcal Energy Burn (Combat/Runecrafting AP).")
         }
 
         // 7. Accumulate "While You Were Away" Chronicle Summary

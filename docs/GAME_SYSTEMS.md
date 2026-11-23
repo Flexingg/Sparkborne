@@ -30,17 +30,20 @@ Sparkborne fuses **three live data sources** using strict per-day high-water mar
 
 ---
 
-## 3. Step Bank as Action Points (`StepBankManager.kt`)
+## 3. Fitness Action Point Banks (`ActionBankManager.kt`, `StepBankManager.kt`)
 
-All synced and live steps build up cleanly in your **Step Bank** (`player.savedSteps`) so you can spend them like **Action Points** whenever you sit down to play:
+All synced real-world exercise, hydration, and calorie burn accumulates into **5 dedicated Fitness Action Point Banks** that you spend on matching skills and combat whenever you sit down to play. **The more you level up the skills tied to a bank, the larger that bank's capacity grows:**
 
-- **Starting Capacity:** `50,000` steps at Level 0.
-- **Scaling Formula:**
-  $$\text{Capacity} = 50{,}000 + (\text{Level} \times 25{,}000) + (\text{Level}^2 \times 5{,}000) + (\text{ExtraMuscleRanks} \times 10{,}000)$$
-- **Where to Spend Banked Steps:**
-  1. **World Map Travel:** Complete roads between towns on demand.
-  2. **Repeatable Town Activities:** Run `1x` cycle or `Spend All` for instant multi-cycle loot, Skill XP, Materials, Skill Chests, and Collectibles.
-  3. **Roguelike Delve Nodes:** Unlock locked delve nodes on demand before entering combat.
+| Bank | Real-World Source | Fuels | Base Cap + Skill Scaling |
+| :--- | :--- | :--- | :--- |
+| **🥾 Steps** | Phone Pedometer + Health Connect + SparkyFitness | World Travel, Foraging, Archaeology, Trade, Delve Node unlocking | `50,000` + Hero Lv + Muscle Ranks + Foraging/Archaeology/Trade (`+15,000`/lvl) |
+| **💪 Push Volume (`kg`)** | Chest, Shoulders, Triceps lifting volume | Mining & Smithing (`250 kg` base/cycle) | `25,000 kg` + Mining/Smithing (`+5,000 kg`/lvl + quadratic bonus) |
+| **🪓 Pull & Legs (`kg`)** | Back, Biceps, Forearms, Quads, Hamstrings, Glutes, Calves, Core | Woodcutting, Fishing & Salvage (`250 kg` base/cycle) | `25,000 kg` + Woodcutting/Fishing/Salvage (`+4,500 kg`/lvl + quadratic bonus) |
+| **💧 Hydration (`mL`)** | Health Connect `HydrationRecord` + SparkyFitness water | Diving / Swimming & Alchemy (`250 mL` base/cycle) | `15,000 mL` + Diving/Alchemy (`+3,000 mL`/lvl + quadratic bonus) |
+| **🔥 Energy Burn (`kcal`)** | Health Connect `ActiveCaloriesBurnedRecord` (fallback: `steps×0.04 + liftKg×0.025`) | Fighting Monsters in Delves (`50 kcal` skirmish / `100 kcal` boss) & Runecrafting (`100 kcal` base/cycle) | `10,000 kcal` + Runecrafting (`+2,500 kcal`/lvl + quadratic) + Hero Level (`+1,500 kcal`/lvl) |
+
+- **Work Efficiency Applies Everywhere:** Skill levels, Tools, Collectibles, and Trailblazer Brew reduce the Action Point cost per cycle for every bank (down to a `35%` floor).
+- **Starter Reserves:** New heroes start with modest reserves (`500 kg` Push, `500 kg` Pull/Legs, `1,000 mL` Hydration, `300 kcal` Active Burn) so every skill and first delve is playable right away.
 
 ---
 

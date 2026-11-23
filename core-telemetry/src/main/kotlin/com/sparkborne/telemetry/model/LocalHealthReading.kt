@@ -26,6 +26,7 @@ data class LocalHealthReading(
     val fatGrams: Double = 0.0,
     val nutritionEntryCount: Int = 0,
     val bodyweightKg: Double? = null,
+    val activeCaloriesBurned: Double = 0.0,
     val syncedAtEpochMs: Long = 0L,
 ) {
     val hasAnyData: Boolean
@@ -36,5 +37,6 @@ data class LocalHealthReading(
             proteinGrams > 0.0 ||
             carbsGrams > 0.0 ||
             fatGrams > 0.0 ||
+            activeCaloriesBurned > 0.0 ||
             bodyweightKg != null
 }

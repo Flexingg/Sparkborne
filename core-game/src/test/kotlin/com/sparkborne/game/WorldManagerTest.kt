@@ -42,27 +42,23 @@ class WorldManagerTest {
 
     @Test
     fun `synced steps complete multiple WalkScape town activity cycles and grant resources`() {
-        var state = GameCatalog.initialGameState()
+        var state = GameCatalog.initialGameState().let {
+            it.copy(
+                player = it.player.copy(
+                    actionBanks = it.player.actionBanks + (com.sparkborne.game.model.ActionBankType.PUSH_VOLUME to 850),
+                ),
+            )
+        }
         val initialIron = state.player.ironOre
         val initialGold = state.player.gold
 
-        // Mine Basalt Seam: 1000 steps/action -> +6g, +4 iron
+        // Mine Basalt Seam: 250 kg Push Volume/action -> +6g, +4 iron
         state = WorldManager.startActivity(state, "act_ember_mining").getOrThrow()
+        val result = com.sparkborne.game.engine.StepBankManager.spendBankedStepsOnActivity(state).getOrThrow()
 
-        val snap = TelemetryNormalizer.normalize(
-            date = "2026-11-22",
-            dailySummary = null,
-            checkIn = CheckInMeasurementDto(entryDate = "2026-11-22", steps = 3400.0),
-            sleepEntries = emptyList(),
-            syncedAtEpochMs = 1_000L,
-        )
-        val delta = SnapshotIdempotency.computeDelta(null, snap)
-        val banked = TelemetryRulesEngine.applyTelemetry(state, snap, delta, null).state
-        val result = com.sparkborne.game.engine.StepBankManager.spendBankedStepsOnActivity(banked).getOrThrow()
-
-        // 3400 steps = 3 completions + 400 remainder
+        // 850 kg Push = 3 completions (750 kg) + 100 kg remainder
         assertEquals(3, result.activeActivity!!.completionsCount)
-        assertEquals(400, result.activeActivity!!.stepsProgress)
+        assertEquals(100, result.activeActivity!!.stepsProgress)
         assertEquals(initialIron + 12, result.player.ironOre)
         assertEquals(initialGold + 18, result.player.gold)
     }

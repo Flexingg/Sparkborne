@@ -32,10 +32,10 @@ object SparkpediaCatalog {
         CodexEntry(
             id = "guide_step_bank",
             category = CodexCategory.GUIDES,
-            title = "The Step Bank (Action Points)",
-            subtitle = "Bank All Steps · Spend Anytime Like AP",
-            summary = "Every step synced from Phone Sensor, Health Connect, or SparkyFitness builds up in your Step Bank so you can spend them like Action Points whenever you play.",
-            mechanicsDetail = "• Starting Capacity: 50,000 steps (scales into millions with Hero Level & Muscle Strength Ranks).\n• Spend banked steps on demand to travel the World Map, run Town Activity cycles, or unlock Delve nodes in one sitting!",
+            title = "Fitness Action Point Banks",
+            subtitle = "Steps · Push · Pull/Legs · Hydration · Energy Burn",
+            summary = "Every real-world exercise and recovery habit builds up its own Action Point Bank that fuels matching RPG skills and combat — and leveling up those skills expands each bank's capacity!",
+            mechanicsDetail = "• 🥾 Steps Bank → World Travel, Foraging, Archaeology, Trade & Delve Nodes.\n• 💪 Push Volume Bank (Chest/Shoulders/Triceps kg) → Mining & Smithing.\n• 🪓 Pull & Legs Bank (Back/Arms/Legs/Core kg) → Woodcutting, Fishing & Salvage.\n• 💧 Hydration Bank (mL) → Diving / Swimming & Alchemy.\n• 🔥 Energy Burn Bank (kcal) → Fighting Monsters in Delves & Runecrafting!",
             unlockHint = "Unlocked from the start.",
         ),
         CodexEntry(

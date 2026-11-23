@@ -3,6 +3,7 @@ package com.sparkborne.app.data
 import android.content.Context
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.permission.HealthPermission
+import androidx.health.connect.client.records.ActiveCaloriesBurnedRecord
 import androidx.health.connect.client.records.HydrationRecord
 import androidx.health.connect.client.records.NutritionRecord
 import androidx.health.connect.client.records.SleepSessionRecord
@@ -100,8 +101,9 @@ class HealthConnectReader(private val context: Context) {
         val canSleep = PERM_SLEEP in granted
         val canNutrition = PERM_NUTRITION in granted
         val canWeight = PERM_WEIGHT in granted
+        val canActiveCal = PERM_ACTIVE_CALORIES in granted
 
-        if (!canSteps && !canHydration && !canSleep && !canNutrition && !canWeight) {
+        if (!canSteps && !canHydration && !canSleep && !canNutrition && !canWeight && !canActiveCal) {
             return emptyList()
         }
 
@@ -131,6 +133,7 @@ class HealthConnectReader(private val context: Context) {
 
             val stepsByDate = mutableMapOf<String, Int>()
             val hydrationByDate = mutableMapOf<String, Int>()
+            val activeCalByDate = mutableMapOf<String, Double>()
             val sleepByDate = mutableMapOf<String, IntArray>() // [total, deep, rem, light, awake, sessions]
             val nutritionByDate = mutableMapOf<String, DoubleArray>() // [kcal, prot, carbs, fat, count]
             val weightByDate = mutableMapOf<String, Pair<Long, Double>>() // epochMs -> kg
@@ -170,6 +173,26 @@ class HealthConnectReader(private val context: Context) {
                         if (ml > 0) {
                             val key = bucket.startTime.toLocalDate().toString()
                             hydrationByDate[key] = (hydrationByDate[key] ?: 0) + ml
+                        }
+                    }
+                }
+            }
+
+            // 2b. Active Calories Burned (batched 1-day periods)
+            if (canActiveCal) {
+                runCatching {
+                    val buckets = client.aggregateGroupByPeriod(
+                        AggregateGroupByPeriodRequest(
+                            metrics = setOf(ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL),
+                            timeRangeFilter = TimeRangeFilter.between(localStart, localEndExclusive),
+                            timeRangeSlicer = Period.ofDays(1),
+                        ),
+                    )
+                    for (bucket in buckets) {
+                        val kcal = bucket.result[ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL]?.inKilocalories ?: 0.0
+                        if (kcal > 0.0) {
+                            val key = bucket.startTime.toLocalDate().toString()
+                            activeCalByDate[key] = (activeCalByDate[key] ?: 0.0) + kcal
                         }
                     }
                 }
@@ -296,7 +319,7 @@ class HealthConnectReader(private val context: Context) {
                 }
             }
 
-            val datesWithData = (stepsByDate.keys + hydrationByDate.keys + sleepByDate.keys + nutritionByDate.keys + weightByDate.keys)
+            val datesWithData = (stepsByDate.keys + hydrationByDate.keys + activeCalByDate.keys + sleepByDate.keys + nutritionByDate.keys + weightByDate.keys)
                 .sorted()
 
             val chunkReadings = datesWithData.mapNotNull { dateKey ->
@@ -318,6 +341,7 @@ class HealthConnectReader(private val context: Context) {
                     fatGrams = nutArr?.get(3) ?: 0.0,
                     nutritionEntryCount = nutArr?.get(4)?.roundToInt() ?: 0,
                     bodyweightKg = weightByDate[dateKey]?.second,
+                    activeCaloriesBurned = activeCalByDate[dateKey] ?: 0.0,
                     syncedAtEpochMs = nowMs,
                 )
                 reading.takeIf { it.hasAnyData }
@@ -338,6 +362,7 @@ class HealthConnectReader(private val context: Context) {
         val PERM_SLEEP: String = HealthPermission.getReadPermission(SleepSessionRecord::class)
         val PERM_NUTRITION: String = HealthPermission.getReadPermission(NutritionRecord::class)
         val PERM_WEIGHT: String = HealthPermission.getReadPermission(WeightRecord::class)
+        val PERM_ACTIVE_CALORIES: String = HealthPermission.getReadPermission(ActiveCaloriesBurnedRecord::class)
         val PERM_BACKGROUND: String = HealthPermission.PERMISSION_READ_HEALTH_DATA_IN_BACKGROUND
         val PERM_HISTORY: String = HealthPermission.PERMISSION_READ_HEALTH_DATA_HISTORY
 
@@ -347,6 +372,7 @@ class HealthConnectReader(private val context: Context) {
             PERM_SLEEP,
             PERM_NUTRITION,
             PERM_WEIGHT,
+            PERM_ACTIVE_CALORIES,
             PERM_BACKGROUND,
             PERM_HISTORY,
         )

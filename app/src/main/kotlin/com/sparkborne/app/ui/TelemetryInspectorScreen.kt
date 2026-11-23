@@ -753,6 +753,7 @@ private fun HealthConnectSourceCard(
             "Hydration" to (HealthConnectReader.PERM_HYDRATION in hc.grantedPermissions),
             "Nutrition" to (HealthConnectReader.PERM_NUTRITION in hc.grantedPermissions),
             "Weight" to (HealthConnectReader.PERM_WEIGHT in hc.grantedPermissions),
+            "Active Cal" to (HealthConnectReader.PERM_ACTIVE_CALORIES in hc.grantedPermissions),
             "Background" to hc.hasBackgroundPermission,
             "History" to hc.hasHistoryPermission,
         )

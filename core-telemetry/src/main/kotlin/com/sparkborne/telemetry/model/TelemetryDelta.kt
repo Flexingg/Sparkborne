@@ -20,4 +20,5 @@ data class TelemetryDelta(
     val proteinGramsDelta: Double,
     val totalLiftingVolumeKgDelta: Double,
     val effectiveMuscleVolumeKgDeltas: Map<MuscleGroup, Double>,
+    val activeCaloriesBurnedDelta: Double = 0.0,
 )

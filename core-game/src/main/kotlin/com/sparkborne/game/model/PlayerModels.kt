@@ -173,6 +173,12 @@ data class PlayerState(
     val materials: Map<MaterialType, Int> = emptyMap(),
     val consumables: Map<String, Int> = emptyMap(),
     val activeStepBoostCharges: Int = 0,
+    val actionBanks: Map<ActionBankType, Int> = mapOf(
+        ActionBankType.PUSH_VOLUME to 500,
+        ActionBankType.PULL_LEGS_VOLUME to 500,
+        ActionBankType.HYDRATION_ML to 1000,
+        ActionBankType.CALORIES_BURNT to 300,
+    ),
 ) {
     fun maxToolbeltSlots(): Int = when {
         level >= 10 -> 4

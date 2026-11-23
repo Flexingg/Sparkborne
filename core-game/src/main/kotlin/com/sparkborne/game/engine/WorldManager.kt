@@ -143,14 +143,14 @@ object WorldManager {
             }
         }
 
-        // 2. Repeatable Town Activity (WalkScape-style multi-completion loop with Skill Efficiency & Chests)
+        // 2. Repeatable Town Activity (WalkScape-style multi-completion loop using native Action Bank cost!)
         val activeAct = state.activeActivity ?: return state
         val def = WorldCatalog.activityById(activeAct.activityId) ?: return state
         val skill = com.sparkborne.game.model.SkillType.fromTag(def.skillTag)
-        val effectiveStepsPerAction = SkillEngine.effectiveStepsPerAction(def.stepsPerAction, state, skill)
+        val (_, effectiveCostPerAction) = ActionBankManager.costPerCycle(state, def)
         val totalProgress = activeAct.stepsProgress + effectiveSteps
-        val completions = totalProgress / effectiveStepsPerAction
-        val remainder = totalProgress % effectiveStepsPerAction
+        val completions = totalProgress / effectiveCostPerAction
+        val remainder = totalProgress % effectiveCostPerAction
 
         if (completions <= 0) {
             return state.copy(activeActivity = activeAct.copy(stepsProgress = remainder))

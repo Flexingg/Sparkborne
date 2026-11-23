@@ -22,6 +22,7 @@ data class DailyTelemetrySnapshot(
     val contentHash: String,
     val syncedAtEpochMs: Long,
     val metricSources: Map<String, String> = emptyMap(),
+    val activeCaloriesBurned: Double = 0.0,
 )
 
 @Serializable

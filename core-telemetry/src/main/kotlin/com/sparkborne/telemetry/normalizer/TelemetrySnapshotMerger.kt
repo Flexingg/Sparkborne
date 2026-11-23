@@ -106,6 +106,13 @@ object TelemetrySnapshotMerger {
             sources["weight"] = if (existing?.bodyweightKg != null && sources["weight"] == "SparkyFitness") "HC + Sparky" else "Health Connect"
         }
 
+        val activeBurn = round2(
+            max(
+                existing?.activeCaloriesBurned ?: 0.0,
+                max(reading.activeCaloriesBurned, steps * 0.04 + lifting.totalVolumeKg * 0.025),
+            ),
+        )
+
         return buildSnapshot(
             date = reading.date,
             goals = goals,
@@ -117,6 +124,7 @@ object TelemetrySnapshotMerger {
             bodyweightKg = bodyweightKg,
             syncedAtEpochMs = max(existing?.syncedAtEpochMs ?: 0L, reading.syncedAtEpochMs),
             metricSources = sources,
+            activeCaloriesBurned = activeBurn,
         )
     }
 
@@ -184,6 +192,13 @@ object TelemetrySnapshotMerger {
             sources["lifting"] = "SparkyFitness (Liftosaur)"
         }
 
+        val activeBurn = round2(
+            max(
+                max(existing.activeCaloriesBurned, sparky.activeCaloriesBurned),
+                steps * 0.04 + lifting.totalVolumeKg * 0.025,
+            ),
+        )
+
         return buildSnapshot(
             date = sparky.date,
             goals = sparky.goals,
@@ -195,6 +210,7 @@ object TelemetrySnapshotMerger {
             bodyweightKg = bodyweightKg,
             syncedAtEpochMs = max(existing.syncedAtEpochMs, sparky.syncedAtEpochMs),
             metricSources = sources,
+            activeCaloriesBurned = activeBurn,
         )
     }
 
@@ -225,6 +241,7 @@ object TelemetrySnapshotMerger {
         bodyweightKg: Double?,
         syncedAtEpochMs: Long,
         metricSources: Map<String, String> = emptyMap(),
+        activeCaloriesBurned: Double = 0.0,
     ): DailyTelemetrySnapshot {
         val adherence = GoalAdherenceSummary(
             caloriesRatio = safeRatio(nutrition.calories, goals.caloriesTarget.toDouble()),
@@ -249,6 +266,7 @@ object TelemetrySnapshotMerger {
             contentHash = "",
             syncedAtEpochMs = syncedAtEpochMs,
             metricSources = metricSources,
+            activeCaloriesBurned = activeCaloriesBurned,
         )
 
         return base.copy(contentHash = SnapshotIdempotency.computeContentHash(base))

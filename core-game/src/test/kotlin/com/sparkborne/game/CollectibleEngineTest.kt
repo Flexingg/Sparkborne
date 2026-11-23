@@ -16,7 +16,12 @@ class CollectibleEngineTest {
     @Test
     fun `completing activity milestone discovers rare collectible and applies passive bonus`() {
         var state = GameCatalog.initialGameState().let {
-            it.copy(player = it.player.copy(savedSteps = 10_000))
+            it.copy(
+                player = it.player.copy(
+                    savedSteps = 10_000,
+                    actionBanks = it.player.actionBanks + (com.sparkborne.game.model.ActionBankType.PUSH_VOLUME to 5_000),
+                ),
+            )
         }
         state = WorldManager.startActivity(state, "act_ember_mining").getOrThrow()
 

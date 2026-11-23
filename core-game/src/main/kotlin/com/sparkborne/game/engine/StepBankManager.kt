@@ -124,32 +124,39 @@ object StepBankManager {
     }
 
     /**
-     * Spends banked steps on the active repeatable Town Activity.
+     * Spends banked Action Points from the active Town Activity's native [ActionBankType]
+     * (e.g. Push Volume for Mining/Smithing, Hydration for Diving/Alchemy, Pull/Legs for
+     * Woodcutting/Fishing/Salvage, Energy Burn for Runecrafting, Steps for Foraging/Archaeology/Trade).
      * - If [maxCycles] is specified (e.g. `1`), spends just enough for that many cycles.
-     * - If [maxCycles] is null, spends all available banked steps!
+     * - If [maxCycles] is null, spends all available balance in that bank!
      */
     fun spendBankedStepsOnActivity(state: GameState, maxCycles: Int? = null): Result<GameState> {
         val activeAct = state.activeActivity
             ?: return Result.failure(IllegalStateException("No active town activity."))
         val def = WorldCatalog.activityById(activeAct.activityId)
             ?: return Result.failure(IllegalStateException("Unknown town activity."))
-        val available = state.player.savedSteps
+
+        val (bankType, costPerCycle) = ActionBankManager.costPerCycle(state, def)
+        val available = ActionBankManager.balanceOf(state.player, bankType)
         if (available <= 0) {
-            return Result.failure(IllegalStateException("Your Step Bank is empty. Sync SparkyFitness to bank steps."))
+            return Result.failure(
+                IllegalStateException(
+                    "Your ${bankType.icon} ${bankType.displayName} Bank is empty! Sync ${bankType.displayName.lowercase()} to fuel ${def.name}.",
+                ),
+            )
         }
 
-        val skill = com.sparkborne.game.model.SkillType.fromTag(def.skillTag)
-        val effSteps = SkillEngine.effectiveStepsPerAction(def.stepsPerAction, state, skill)
         val toSpend = if (maxCycles != null && maxCycles > 0) {
-            val neededForCycles = (maxCycles * effSteps - activeAct.stepsProgress).coerceAtLeast(1)
+            val neededForCycles = (maxCycles * costPerCycle - activeAct.stepsProgress).coerceAtLeast(1)
             min(available, neededForCycles)
         } else {
             available
         }
 
+        val afterWithdraw = ActionBankManager.withdraw(state, bankType, toSpend)
+            .getOrElse { return Result.failure(it) }
         val events = mutableListOf<String>()
-        val afterSpend = state.copy(player = state.player.copy(savedSteps = available - toSpend))
-        val updated = WorldManager.applyStepsToWorld(afterSpend, toSpend, events)
+        val updated = WorldManager.applyStepsToWorld(afterWithdraw, toSpend, events)
         return Result.success(
             updated.copy(recentLog = (events + updated.recentLog).take(30)),
         )

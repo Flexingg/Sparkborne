@@ -36,7 +36,12 @@ class SkillEngineTest {
     @Test
     fun `completing 5 activity cycles awards a skill chest and every 5th chest opened guarantees an egg`() {
         var state = GameCatalog.initialGameState().let {
-            it.copy(player = it.player.copy(savedSteps = 30_000))
+            it.copy(
+                player = it.player.copy(
+                    savedSteps = 30_000,
+                    actionBanks = it.player.actionBanks + (com.sparkborne.game.model.ActionBankType.PUSH_VOLUME to 5_000),
+                ),
+            )
         }
         state = WorldManager.startActivity(state, "act_ember_mining").getOrThrow()
 

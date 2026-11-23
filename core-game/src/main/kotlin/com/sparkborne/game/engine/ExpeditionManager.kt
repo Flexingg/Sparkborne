@@ -87,7 +87,14 @@ object ExpeditionManager {
         return when (node.type) {
             DelveNodeType.COMBAT, DelveNodeType.BOSS -> {
                 val enemy = node.enemy ?: return Result.failure(IllegalStateException("Missing enemy on combat node."))
-                val stats = CombatStatsCalculator.calculate(state)
+                val burnCost = ActionBankManager.combatEntryBurnCost(isBoss = node.type == DelveNodeType.BOSS)
+                val afterBurn = ActionBankManager.withdraw(
+                    state = state,
+                    bank = com.sparkborne.game.model.ActionBankType.CALORIES_BURNT,
+                    amount = burnCost,
+                ).getOrElse { return Result.failure(it) }
+
+                val stats = CombatStatsCalculator.calculate(afterBurn)
                 val maxHp = maxOf(exp.runPlayerMaxHp, stats.maxHp)
                 val maxMana = maxOf(exp.runPlayerMaxMana, stats.maxMana)
                 val combat = ActiveCombatState(
@@ -97,10 +104,10 @@ object ExpeditionManager {
                     playerMaxHp = maxHp,
                     playerMana = min(exp.runPlayerMana, maxMana),
                     playerMaxMana = maxMana,
-                    combatLog = listOf("Encountered ${enemy.name} (HP ${enemy.maxHp}, ATK ${enemy.attack})!"),
+                    combatLog = listOf("Spent 🔥$burnCost kcal · Encountered ${enemy.name} (HP ${enemy.maxHp}, ATK ${enemy.attack})!"),
                 )
                 Result.success(
-                    state.copy(
+                    afterBurn.copy(
                         activeExpedition = exp.copy(
                             runPlayerMaxHp = maxHp,
                             runPlayerMaxMana = maxMana,

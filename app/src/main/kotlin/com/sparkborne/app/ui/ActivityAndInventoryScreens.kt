@@ -29,10 +29,12 @@ import com.sparkborne.app.ui.components.RpgProgressBar
 import com.sparkborne.app.ui.theme.RpgTheme
 import com.sparkborne.game.catalog.GameCatalog
 import com.sparkborne.game.catalog.WorldCatalog
+import com.sparkborne.game.engine.ActionBankManager
 import com.sparkborne.game.engine.CombatAction
 import com.sparkborne.game.engine.CraftingEngine
 import com.sparkborne.game.engine.SkillEngine
 import com.sparkborne.game.engine.ToolbeltEngine
+import com.sparkborne.game.model.ActionBankType
 import com.sparkborne.game.model.GameState
 import com.sparkborne.game.model.MaterialType
 import com.sparkborne.game.model.SkillType
@@ -94,7 +96,7 @@ fun ActivityTabScreen(
             }
         }
 
-        // Current Location Header + Banked Steps AP
+        // Current Location Header + All 5 Fitness Action Point Banks
         item {
             RpgPanel(borderColor = colors.accentPrimary) {
                 Row(
@@ -118,13 +120,7 @@ fun ActivityTabScreen(
                         containerColor = colors.accentSecondary,
                     )
                 }
-                Text(
-                    "🥾 Step Bank: %,d / %,d AP ready to spend".format(bankedSteps, state.player.maxStepBankCapacity()),
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = colors.vitalityEmerald,
-                )
+                FitnessActionBanksGrid(state = state)
             }
         }
 
@@ -142,7 +138,7 @@ fun ActivityTabScreen(
                     )
                     RpgProgressBar(
                         label = "Road Progress",
-                        valueText = "${travel.stepsWalked} / ${travel.stepsRequired}",
+                        valueText = "${travel.stepsWalked} / ${travel.stepsRequired} steps",
                         progress = travel.progressFraction,
                         fillColor = colors.accentPrimary,
                     )
@@ -177,7 +173,8 @@ fun ActivityTabScreen(
         items(currentTown.activities, key = { it.id }) { act ->
             val isRunning = state.activeActivity?.activityId == act.id
             val skill = SkillType.fromTag(act.skillTag)
-            val effSteps = SkillEngine.effectiveStepsPerAction(act.stepsPerAction, state, skill)
+            val (bankType, costPerCycle) = com.sparkborne.game.engine.ActionBankManager.costPerCycle(state, act)
+            val bankAvail = com.sparkborne.game.engine.ActionBankManager.balanceOf(state.player, bankType)
             val mat = CraftingEngine.materialForSkill(skill)
 
             RpgPanel(borderColor = if (isRunning) colors.vitalityEmerald else colors.pixelBorder) {
@@ -194,7 +191,7 @@ fun ActivityTabScreen(
                         )
                         Text(act.description, style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
                         Text(
-                            "Cost: %,d steps/cycle · Drops: ${mat.icon} ${mat.displayName} +${act.rewardXp}XP".format(effSteps),
+                            "Uses ${bankType.icon} %,d ${bankType.unit}/cycle (Have %,d) · Drops: ${mat.icon} ${mat.displayName}".format(costPerCycle, bankAvail),
                             fontFamily = FontFamily.Monospace,
                             fontSize = 10.sp,
                             color = colors.accentSecondary,
@@ -206,14 +203,14 @@ fun ActivityTabScreen(
                     val active = state.activeActivity!!
                     RpgProgressBar(
                         label = "Cycle #${active.completionsCount + 1}",
-                        valueText = "${active.stepsProgress} / $effSteps",
-                        progress = (active.stepsProgress.toFloat() / effSteps.coerceAtLeast(1)).coerceIn(0f, 1f),
+                        valueText = "${active.stepsProgress} / $costPerCycle ${bankType.unit}",
+                        progress = (active.stepsProgress.toFloat() / costPerCycle.coerceAtLeast(1)).coerceIn(0f, 1f),
                         fillColor = colors.vitalityEmerald,
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        if (bankedSteps > 0) {
+                        if (bankAvail > 0) {
                             RpgActionButton(
-                                text = "SPEND 1x",
+                                text = "SPEND 1x ${bankType.icon}",
                                 onClick = { onSpendBankedStepsOnActivity(1) },
                                 containerColor = colors.vitalityEmerald,
                             )
@@ -231,7 +228,7 @@ fun ActivityTabScreen(
                     }
                 } else {
                     RpgActionButton(
-                        text = "START ACTIVITY",
+                        text = "START (${bankType.icon} ${bankType.displayName})",
                         onClick = { onStartActivity(act.id) },
                         containerColor = colors.accentSecondary,
                     )
@@ -564,3 +561,73 @@ fun InventoryTabScreen(
         item { Spacer(Modifier.height(24.dp)) }
     }
 }
+
+/**
+ * Compact 2-column grid of all 5 Fitness Action Point Banks (Steps, Push, Pull/Legs,
+ * Hydration, Active Burn) showing live balance, skill-grown capacity, and what each fuels.
+ */
+@Composable
+fun FitnessActionBanksGrid(state: GameState) {
+    val colors = RpgTheme.colors
+    val banks = ActionBankType.entries
+    RpgPanel(borderColor = colors.accentSecondary) {
+        Text(
+            "⚡ FITNESS ACTION POINT BANKS",
+            fontFamily = FontFamily.Monospace,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.ExtraBold,
+            color = colors.accentSecondary,
+        )
+        Text(
+            "Real workouts & hydration fill each bank. Leveling matching skills expands your bank capacity.",
+            style = MaterialTheme.typography.bodySmall,
+            color = colors.textMuted,
+        )
+        banks.chunked(2).forEach { rowBanks ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                rowBanks.forEach { bank ->
+                    val bal = ActionBankManager.balanceOf(state.player, bank)
+                    val cap = ActionBankManager.capacityOf(state.player, bank)
+                    val fillColor = when (bank) {
+                        ActionBankType.STEPS -> colors.vitalityEmerald
+                        ActionBankType.PUSH_VOLUME -> colors.accentPrimary
+                        ActionBankType.PULL_LEGS_VOLUME -> colors.accentSecondary
+                        ActionBankType.HYDRATION_ML -> colors.hydrationCyan
+                        ActionBankType.CALORIES_BURNT -> colors.crimsonHp
+                    }
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = colors.panelElevated,
+                        border = BorderStroke(1.dp, colors.pixelBorder),
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(3.dp),
+                        ) {
+                            RpgProgressBar(
+                                label = "${bank.icon} ${bank.displayName}",
+                                valueText = "%,d/%,d %s".format(bal, cap, bank.unit),
+                                progress = if (cap > 0) (bal.toFloat() / cap.toFloat()).coerceIn(0f, 1f) else 0f,
+                                fillColor = fillColor,
+                            )
+                            Text(
+                                bank.fuelsDescription,
+                                fontSize = 9.sp,
+                                color = colors.textMuted,
+                                maxLines = 2,
+                            )
+                        }
+                    }
+                }
+                if (rowBanks.size == 1) {
+                    Spacer(Modifier.weight(1f))
+                }
+            }
+        }
+    }
+}
+
