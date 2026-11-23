@@ -528,7 +528,7 @@ fun ElementalAppearanceCard(
         }
 
         Text(
-            "ANIMATED SPLASH BACKDROP",
+            "ANIMATED SPLASH SCENE",
             style = MaterialTheme.typography.labelMedium,
             color = colors.textMuted,
             fontFamily = FontFamily.Monospace,

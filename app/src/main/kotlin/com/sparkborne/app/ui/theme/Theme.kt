@@ -1,6 +1,5 @@
 package com.sparkborne.app.ui.theme
 
-import androidx.annotation.DrawableRes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
@@ -8,15 +7,12 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
-import com.sparkborne.app.R
 
-enum class SplashStyleId(
-    val displayName: String,
-    @DrawableRes val drawableRes: Int,
-) {
-    TWILIGHT_CITADEL("Twilight Citadel", R.drawable.splash_twilight_citadel),
-    CAMPFIRE_VIGIL("Campfire Vigil", R.drawable.splash_campfire_vigil),
-    OBSIDIAN_EMBLEM("Obsidian Anvil", R.drawable.splash_obsidian_emblem),
+/** Animated splash scenes (rendered procedurally in `ui/splash`). */
+enum class SplashStyleId(val displayName: String) {
+    TWILIGHT_CITADEL("Twilight Citadel"),
+    CAMPFIRE_VIGIL("Campfire Vigil"),
+    OBSIDIAN_EMBLEM("Obsidian Anvil"),
 }
 
 enum class ElementalParticleKind {
