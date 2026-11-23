@@ -91,7 +91,7 @@ fun SparkborneRootScreen(
                         Modifier
                             .statusBarsPadding()
                             .navigationBarsPadding()
-                            .padding(top = 98.dp, bottom = 76.dp)
+                            .padding(top = 66.dp, bottom = 76.dp)
                     },
                 ),
             label = "game_view_switch",
@@ -163,185 +163,30 @@ fun SparkborneRootScreen(
             }
         }
 
-        // 2. Clean Top Game Bar + Dismissible / Re-Openable Notifications Drawer
+        // 2. Pinned WalkScape-Style Top Game HUD Bar + Dismissible Notifications Drawer
         Column(
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                .fillMaxWidth()
-                .statusBarsPadding()
-                .padding(horizontal = 10.dp, vertical = 6.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+                .fillMaxWidth(),
         ) {
-            Surface(
-                shape = RoundedCornerShape(10.dp),
-                color = colors.panelSurface.copy(alpha = 0.94f),
-                border = BorderStroke(1.5.dp, colors.pixelBorderBright),
-                shadowElevation = 8.dp,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Column(
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
-                    verticalArrangement = Arrangement.spacedBy(5.dp),
-                ) {
-                    // Row 1: Hero Avatar + Level + Currencies + Utility Buttons (🔔, 📖, ⚡)
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(7.dp),
-                            modifier = Modifier.clickable { viewModel.selectTab(SparkborneTab.HERO) },
-                        ) {
-                            PixelSprite(
-                                drawableRes = R.drawable.pixel_hero_knight,
-                                contentDescription = "Hero",
-                                size = 34.dp,
-                                borderColor = colors.accentPrimary,
-                            )
-                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                Text(
-                                    text = "LV.${game.player.level} · ${WorldCatalog.locationById(game.currentLocationId).name.substringBefore(" ")}",
-                                    fontFamily = FontFamily.Monospace,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    color = colors.accentPrimary,
-                                )
-                                RpgCurrencyRow(
-                                    gold = game.player.gold,
-                                    iron = game.player.ironOre,
-                                    shards = game.player.emberShards,
-                                    showZeros = true,
-                                    compact = true,
-                                )
-                            }
-                        }
-
-                        Row(horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.CenterVertically) {
-                            // 🔔 Dismissible & Re-Openable Notifications / Quest Drawer Toggle
-                            Surface(
-                                shape = RoundedCornerShape(7.dp),
-                                color = if (state.showNotificationsPanel) colors.accentPrimary.copy(alpha = 0.22f) else colors.panelElevated,
-                                border = BorderStroke(
-                                    1.dp,
-                                    if (alertCount > 0 || state.showNotificationsPanel) colors.accentPrimary else colors.pixelBorderBright,
-                                ),
-                                modifier = Modifier.clickable { viewModel.toggleNotificationsPanel() },
-                            ) {
-                                Text(
-                                    text = if (alertCount > 0) "🔔$alertCount" else "🔔",
-                                    fontSize = 11.sp,
-                                    fontFamily = FontFamily.Monospace,
-                                    fontWeight = FontWeight.Bold,
-                                    color = if (alertCount > 0) colors.accentPrimary else colors.textPrimary,
-                                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 5.dp),
-                                )
-                            }
-
-                            // 📖 Sparkpedia Codex
-                            val hasUnread = game.unreadCodexIds.isNotEmpty()
-                            Surface(
-                                shape = RoundedCornerShape(7.dp),
-                                color = colors.panelElevated,
-                                border = BorderStroke(
-                                    1.dp,
-                                    if (hasUnread) colors.accentPrimary else colors.pixelBorderBright,
-                                ),
-                                modifier = Modifier.clickable { viewModel.openSparkpedia() },
-                            ) {
-                                Text(
-                                    text = if (hasUnread) "📖•" else "📖",
-                                    fontSize = 12.sp,
-                                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 5.dp),
-                                )
-                            }
-
-                            // ⚡ 1-Tap SparkyFitness + Garmin + Liftosaur Sync
-                            Surface(
-                                shape = RoundedCornerShape(7.dp),
-                                color = colors.panelElevated,
-                                border = BorderStroke(1.dp, colors.accentSecondary),
-                                modifier = Modifier.clickable(enabled = !state.isSyncing) { viewModel.syncDays(1) },
-                            ) {
-                                Text(
-                                    text = if (state.isSyncing) "..." else "⚡",
-                                    fontFamily = FontFamily.Monospace,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = colors.accentSecondary,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
-                                )
-                            }
-                        }
-                    }
-
-                    // Row 2: Compact Step Bank + Live Task Strip
-                    val stepCap = game.player.maxStepBankCapacity()
-                    val activeTravel = game.activeTravel
-                    val activeActivity = game.activeActivity
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            text = "🥾 BANK: ${formatCompactSteps(game.player.savedSteps)} / ${formatCompactSteps(stepCap)}",
-                            fontSize = 10.sp,
-                            fontFamily = FontFamily.Monospace,
-                            fontWeight = FontWeight.Bold,
-                            color = colors.vitalityEmerald,
-                        )
-                        val taskLabel = when {
-                            activeTravel != null -> {
-                                val dest = WorldCatalog.locationById(activeTravel.toLocationId).name.substringBefore(" ")
-                                "→ $dest (${(activeTravel.progressFraction * 100).toInt()}%)"
-                            }
-                            activeActivity != null -> {
-                                val def = WorldCatalog.activityById(activeActivity.activityId)
-                                if (def != null) "${skillEmojiFor(def.skillTag)} ${def.skillTag} x${activeActivity.completionsCount}" else ""
-                            }
-                            game.activeExpedition != null -> "⚔ Delving"
-                            else -> "Idle · Banking Steps"
-                        }
-                        Text(
-                            text = taskLabel,
-                            fontSize = 10.sp,
-                            fontFamily = FontFamily.Monospace,
-                            color = colors.accentSecondary,
-                        )
-                    }
-
-                    // Slim progress bar for active travel or activity
-                    if (activeTravel != null) {
-                        LinearProgressIndicator(
-                            progress = { activeTravel.progressFraction },
-                            modifier = Modifier.fillMaxWidth(),
-                            color = colors.accentPrimary,
-                            trackColor = colors.obsidianBg,
-                        )
-                    } else if (activeActivity != null) {
-                        val def = WorldCatalog.activityById(activeActivity.activityId)
-                        if (def != null) {
-                            LinearProgressIndicator(
-                                progress = {
-                                    (activeActivity.stepsProgress.toFloat() / def.stepsPerAction.coerceAtLeast(1)).coerceIn(0f, 1f)
-                                },
-                                modifier = Modifier.fillMaxWidth(),
-                                color = colors.accentSecondary,
-                                trackColor = colors.obsidianBg,
-                            )
-                        }
-                    }
-                }
-            }
+            com.sparkborne.app.ui.components.WalkscapeTopHudBar(
+                game = game,
+                alertCount = alertCount,
+                showNotificationsPanel = state.showNotificationsPanel,
+                isSyncing = state.isSyncing,
+                onAvatarClick = { viewModel.selectTab(SparkborneTab.HERO) },
+                onMiniMapClick = { viewModel.selectTab(SparkborneTab.WORLD) },
+                onToggleNotifications = viewModel::toggleNotificationsPanel,
+                onOpenSparkpedia = viewModel::openSparkpedia,
+                onSyncClick = { viewModel.syncDays(1) },
+            )
 
             // Dismissible & Re-Openable Notifications / Quests Drawer!
             AnimatedVisibility(
                 visible = state.showNotificationsPanel,
                 enter = fadeIn(tween(160)) + expandVertically(),
                 exit = fadeOut(tween(140)) + shrinkVertically(),
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
             ) {
                 RpgPanel(
                     borderColor = colors.accentPrimary,
