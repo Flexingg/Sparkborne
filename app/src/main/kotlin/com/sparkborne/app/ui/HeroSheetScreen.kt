@@ -54,12 +54,17 @@ fun HeroTabScreen(
         )
     }
     val monster = state.activeMonster
+    val companionPortrait: (@Composable (Dp) -> Unit)? = if (monster != null) {
+        { size -> RawPixelSprite(monsterDrawableFor(monster.affinity), monster.name, size) }
+    } else {
+        null
+    }
     CharacterScreen(
         state = state,
         errorMessage = errorMessage,
         actions = actions,
         heroPortrait = { size -> RawPixelSprite(R.drawable.pixel_hero_knight, "Your hero", size) },
-        companionPortrait = monster?.let { m -> { size: Dp -> RawPixelSprite(monsterDrawableFor(m.affinity), m.name, size) } },
+        companionPortrait = companionPortrait,
     )
 }
 
