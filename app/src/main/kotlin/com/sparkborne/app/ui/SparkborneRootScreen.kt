@@ -137,6 +137,9 @@ fun SparkborneRootScreen(
                     onForgeOrToggleTool = viewModel::forgeOrToggleTool,
                     onSaveGearSet = viewModel::saveGearSet,
                     onEquipGearSet = viewModel::equipGearSet,
+                    onForgeOrEquipWeapon = viewModel::forgeOrEquipWeapon,
+                    onForgeOrEquipArmor = viewModel::forgeOrEquipArmor,
+                    onUnlockOrAttuneSpell = viewModel::unlockOrAttuneSpell,
                 )
 
                 SparkborneTab.HERO -> HeroTabScreen(
