@@ -92,6 +92,7 @@ sealed interface Inspect {
     data class Chest(val skill: SkillType) : Inspect
     data class Muscle(val group: MuscleGroup) : Inspect
     data class Loadout(val index: Int) : Inspect
+    data class Talent(val nodeId: String) : Inspect
 }
 
 /** All game mutations the character screens can trigger. */
@@ -105,6 +106,8 @@ class HeroActions(
     val equipGearSet: (Int) -> Unit = {},
     val craftRecipe: (String) -> Unit = {},
     val useConsumable: (String) -> Unit = {},
+    val learnTalent: (String) -> Unit = {},
+    val resetTalents: () -> Unit = {},
 )
 
 val LOADOUT_NAMES = listOf("Combat", "Skilling", "Boss")
@@ -182,6 +185,7 @@ fun InspectOverlay(
                     is Inspect.Chest -> ChestInspect(inspect.skill, state, actions, onNavigate)
                     is Inspect.Muscle -> MuscleInspect(inspect.group, state)
                     is Inspect.Loadout -> LoadoutInspect(inspect.index, state, actions, onNavigate)
+                    is Inspect.Talent -> TalentInspect(inspect.nodeId, state, actions, onNavigate)
                 }
                 if (errorMessage != null) {
                     Text8("⚠ $errorMessage", size = 10.sp, color = colors.crimsonHp, align = TextAlign.Center)
@@ -216,6 +220,7 @@ private fun accentFor(inspect: Inspect, state: GameState): Color = when (inspect
     is Inspect.Skill, is Inspect.Muscle -> Color(0xFF4FD1C5)
     is Inspect.Material, is Inspect.Brew -> Color(0xFF5FD068)
     is Inspect.Loadout -> GoldTrim
+    is Inspect.Talent -> com.sparkborne.game.catalog.TalentCatalog.nodeById(inspect.nodeId)?.let { treeColor(it.tree) } ?: GoldTrim
 }
 
 fun equippedIdFor(slot: GearSlot, p: PlayerState): String? =

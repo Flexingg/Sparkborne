@@ -90,6 +90,7 @@ data class ActiveCombatState(
     val monsterSkillCooldown: Int = 0,
     val turnNumber: Int = 1,
     val combatLog: List<String> = emptyList(),
+    val lastStandUsed: Boolean = false,
 )
 
 /**

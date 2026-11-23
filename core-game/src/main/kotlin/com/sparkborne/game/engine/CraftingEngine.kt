@@ -137,7 +137,8 @@ object CraftingEngine {
         }
 
         val tier = qualityTierFor(state, recipe)
-        val qty = 1 + tier.bonusCraftQty
+        val artisan = if (TalentEngine.has(state.player, com.sparkborne.game.model.TalentAbility.MASTER_ARTISAN)) 1 else 0
+        val qty = 1 + tier.bonusCraftQty + artisan
         val nextConsumables = p.consumables + (recipe.id to ((p.consumables[recipe.id] ?: 0) + qty))
         val prevSkillXp = p.skillXp[recipe.craftSkill] ?: 0
         val nextSkillXp = prevSkillXp + recipe.rewardCraftXp

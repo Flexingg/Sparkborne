@@ -36,10 +36,13 @@ fun HeroTabScreen(
     onEquipGearSet: (Int) -> Unit = {},
     onCraftRecipe: (String) -> Unit = {},
     onUseConsumable: (String) -> Unit = {},
+    onLearnTalent: (String) -> Unit = {},
+    onResetTalents: () -> Unit = {},
 ) {
     val actions = remember(
         onForgeOrEquipWeapon, onForgeOrEquipArmor, onUnlockOrAttuneSpell, onOpenSkillChest,
         onForgeOrToggleTool, onSaveGearSet, onEquipGearSet, onCraftRecipe, onUseConsumable,
+        onLearnTalent, onResetTalents,
     ) {
         HeroActions(
             forgeOrEquipWeapon = onForgeOrEquipWeapon,
@@ -51,6 +54,8 @@ fun HeroTabScreen(
             equipGearSet = onEquipGearSet,
             craftRecipe = onCraftRecipe,
             useConsumable = onUseConsumable,
+            learnTalent = onLearnTalent,
+            resetTalents = onResetTalents,
         )
     }
     val monster = state.activeMonster
