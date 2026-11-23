@@ -71,20 +71,23 @@ enum class CharacterPage(val label: String, val glyph: String) {
  * The hero's character screen: a game-style equipment stage, skill medallions, a spellbook and
  * relic shelves. Everything opens into a full inspect window.
  *
- * [heroPortrait] and [companionPortrait] are supplied by the platform layer (bitmap sprites).
+ * The hero is the layered, gear-aware [HeroSprite]; [companionPortrait] is supplied by the
+ * platform layer (bitmap sprites). The Mirror (🪞 on the stage) reopens character creation.
  */
 @Composable
 fun CharacterScreen(
     state: GameState,
     errorMessage: String?,
     actions: HeroActions,
-    heroPortrait: @Composable (Dp) -> Unit,
-    companionPortrait: (@Composable (Dp) -> Unit)?,
+    heroPortrait: @Composable (Dp) -> Unit = { size -> HeroSprite(heroLookOf(state.player), size) },
+    companionPortrait: (@Composable (Dp) -> Unit)? = null,
     initialPage: CharacterPage = CharacterPage.GEAR,
     initialInspect: Inspect? = null,
+    initialMirror: Boolean = false,
 ) {
     var page by remember { mutableStateOf(initialPage) }
     var inspect by remember { mutableStateOf(initialInspect) }
+    var mirror by remember { mutableStateOf(initialMirror) }
     val open: (Inspect) -> Unit = { inspect = it }
 
     Box(Modifier.fillMaxSize()) {
@@ -104,7 +107,7 @@ fun CharacterScreen(
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     when (pg) {
-                        CharacterPage.GEAR -> GearPage(state, heroPortrait, companionPortrait, open)
+                        CharacterPage.GEAR -> GearPage(state, heroPortrait, companionPortrait, open) { mirror = true }
                         CharacterPage.SKILLS -> SkillsPage(state, open)
                         CharacterPage.TALENTS -> TalentsPage(state, actions, open)
                         CharacterPage.SPELLS -> SpellsPage(state, open)
@@ -116,6 +119,18 @@ fun CharacterScreen(
         }
         inspect?.let { current ->
             InspectOverlay(current, state, actions, errorMessage, onNavigate = open, onClose = { inspect = null })
+        }
+        if (mirror) {
+            CharacterCreationScreen(
+                initial = state.player.appearance,
+                gearLook = heroLookOf(state.player),
+                isNew = false,
+                onConfirm = {
+                    actions.updateAppearance(it)
+                    mirror = false
+                },
+                onCancel = { mirror = false },
+            )
         }
     }
 }
@@ -177,12 +192,13 @@ private fun GearPage(
     heroPortrait: @Composable (Dp) -> Unit,
     companionPortrait: (@Composable (Dp) -> Unit)?,
     open: (Inspect) -> Unit,
+    onMirror: () -> Unit,
 ) {
     val colors = RpgTheme.colors
     val p = state.player
     val stats = CombatStatsCalculator.calculate(state)
 
-    HeroStage(state, heroPortrait, companionPortrait, open)
+    HeroStage(state, heroPortrait, companionPortrait, open, onMirror)
 
     // Vitals: crystal bars + power glyphs, sitting directly on the page
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -281,6 +297,7 @@ private fun HeroStage(
     heroPortrait: @Composable (Dp) -> Unit,
     companionPortrait: (@Composable (Dp) -> Unit)?,
     open: (Inspect) -> Unit,
+    onMirror: () -> Unit,
 ) {
     val colors = RpgTheme.colors
     val p = state.player
@@ -366,15 +383,26 @@ private fun HeroStage(
             LevelCrest(p.level, accent)
         }
 
-        // Hero
-        Box(Modifier.align(Alignment.Center).offset(y = (bob - 8).dp)) { heroPortrait(132.dp) }
+        // Hero (the layered sprite breathes on its own; the stage adds a gentle float)
+        Box(Modifier.align(Alignment.Center).offset(y = (bob / 2 - 10).dp)) { heroPortrait(184.dp) }
+
+        // Mirror: restyle your hero
+        Box(
+            Modifier
+                .align(Alignment.TopStart)
+                .padding(10.dp)
+                .size(34.dp)
+                .pixelFrame(fill = InkDark, edge = GoldTrim.copy(alpha = 0.8f), style = FrameStyle.PLATE, unit = 2.dp)
+                .clickable(onClick = onMirror),
+            contentAlignment = Alignment.Center,
+        ) { Text8("🪞", size = 15.sp) }
 
         Column(
             Modifier.align(Alignment.BottomCenter).padding(bottom = 12.dp).width(200.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            Text8("SPARKBORNE KNIGHT", size = 12.sp, color = colors.textPrimary, weight = FontWeight.ExtraBold, letterSpacing = 2.sp)
+            Text8(p.appearance.name.uppercase(), size = 12.sp, color = colors.textPrimary, weight = FontWeight.ExtraBold, letterSpacing = 2.sp)
             SegmentBar(
                 progress = p.xp.toFloat() / p.xpToNextLevel().coerceAtLeast(1),
                 color = accent,

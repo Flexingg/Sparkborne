@@ -17,6 +17,9 @@ import kotlin.math.floor
 import kotlin.math.max
 import kotlin.math.roundToInt
 import kotlin.math.sin
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.animation.core.animateFloat
 
 /** Seconds of choreographed scene before the outro dissolve begins. */
 internal const val SPLASH_SCENE_SECONDS = 3.7f
@@ -201,4 +204,38 @@ private fun DrawScope.drawFooter(
         layout,
         topLeft = Offset((size.width - layout.size.width) / 2f, barTop + 2 * u + 14.dp.toPx()),
     )
+}
+
+/**
+ * A small looping "living painting" of a splash scene (no title/UI), for the scene picker.
+ * Loops the settled part of the scene so the preview is always lively.
+ */
+@androidx.compose.runtime.Composable
+internal fun SplashScenePreview(
+    scene: SplashScene,
+    palette: RpgPalette,
+    modifier: androidx.compose.ui.Modifier = androidx.compose.ui.Modifier,
+) {
+    val tr = androidx.compose.animation.core.rememberInfiniteTransition(label = "splash_preview")
+    val t by tr.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = androidx.compose.animation.core.infiniteRepeatable(
+            androidx.compose.animation.core.tween(2600, easing = androidx.compose.animation.core.LinearEasing),
+        ),
+        label = "splash_preview_t",
+    )
+    androidx.compose.foundation.Canvas(modifier.then(androidx.compose.ui.Modifier.clipToBounds())) {
+        drawRect(palette.obsidianBg)
+        val unit = max(2f, floor(size.width / 64f))
+        val cols = ceil(size.width / unit).toInt()
+        val rows = ceil(size.height / unit).toInt()
+        val grid = PixelGrid(this, unit, cols, rows)
+        val time = 1.6f + t * 2.6f
+        when (scene) {
+            SplashScene.CITADEL -> grid.drawCitadelScene(time, palette)
+            SplashScene.CAMPFIRE -> grid.drawCampfireScene(time, palette)
+            SplashScene.FORGE -> grid.drawForgeScene(0.45f + t * 1.75f, palette)
+        }
+    }
 }

@@ -38,11 +38,12 @@ fun HeroTabScreen(
     onUseConsumable: (String) -> Unit = {},
     onLearnTalent: (String) -> Unit = {},
     onResetTalents: () -> Unit = {},
+    onUpdateAppearance: (com.sparkborne.game.model.HeroAppearance) -> Unit = {},
 ) {
     val actions = remember(
         onForgeOrEquipWeapon, onForgeOrEquipArmor, onUnlockOrAttuneSpell, onOpenSkillChest,
         onForgeOrToggleTool, onSaveGearSet, onEquipGearSet, onCraftRecipe, onUseConsumable,
-        onLearnTalent, onResetTalents,
+        onLearnTalent, onResetTalents, onUpdateAppearance,
     ) {
         HeroActions(
             forgeOrEquipWeapon = onForgeOrEquipWeapon,
@@ -56,6 +57,7 @@ fun HeroTabScreen(
             useConsumable = onUseConsumable,
             learnTalent = onLearnTalent,
             resetTalents = onResetTalents,
+            updateAppearance = onUpdateAppearance,
         )
     }
     val monster = state.activeMonster
@@ -68,7 +70,6 @@ fun HeroTabScreen(
         state = state,
         errorMessage = errorMessage,
         actions = actions,
-        heroPortrait = { size -> RawPixelSprite(R.drawable.pixel_hero_knight, "Your hero", size) },
         companionPortrait = companionPortrait,
     )
 }

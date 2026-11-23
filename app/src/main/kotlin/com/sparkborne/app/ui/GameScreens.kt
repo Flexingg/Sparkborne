@@ -500,11 +500,9 @@ private fun CombatEncounterArena(
                         IntOffset(heroLunge.value.roundToInt(), idleBob.roundToInt())
                     },
                 ) {
-                    PixelSprite(
-                        drawableRes = R.drawable.pixel_hero_knight,
-                        contentDescription = "Hero",
-                        size = 78.dp,
-                        borderColor = colors.accentPrimary,
+                    com.sparkborne.app.ui.hero.HeroSprite(
+                        look = com.sparkborne.app.ui.hero.heroLookOf(state.player),
+                        height = 96.dp,
                     )
                     state.activeMonster?.let { mon ->
                         PixelSprite(

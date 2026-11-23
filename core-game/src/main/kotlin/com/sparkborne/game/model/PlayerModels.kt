@@ -174,6 +174,7 @@ data class PlayerState(
     val consumables: Map<String, Int> = emptyMap(),
     val activeStepBoostCharges: Int = 0,
     val talents: TalentState = TalentState(),
+    val appearance: HeroAppearance = HeroAppearance(),
     val actionBanks: Map<ActionBankType, Int> = mapOf(
         ActionBankType.PUSH_VOLUME to 500,
         ActionBankType.PULL_LEGS_VOLUME to 500,
