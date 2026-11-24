@@ -409,7 +409,10 @@ private fun Reservoirs(state: GameState, onOpen: () -> Unit) {
             val bal = ActionBankManager.balanceOf(state.player, bank)
             val cap = ActionBankManager.capacityOf(state.player, bank).coerceAtLeast(1)
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Vial(bal.toFloat() / cap, bankColor(bank), Modifier.size(width = 34.dp, height = 46.dp))
+                Box {
+                    Vial(bal.toFloat() / cap, bankColor(bank), Modifier.size(width = 34.dp, height = 46.dp))
+                    com.sparkborne.app.ui.hero.AlertPip(if (bal >= cap) 1 else 0, Modifier.align(Alignment.TopEnd).offset(x = 8.dp, y = (-4).dp), label = "FULL")
+                }
                 Text8("${bank.icon}${compact(bal)}", size = 9.sp, color = if (bal > 0) colors.textPrimary else colors.textMuted, maxLines = 1)
             }
         }
