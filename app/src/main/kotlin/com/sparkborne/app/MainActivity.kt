@@ -15,6 +15,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.core.content.ContextCompat
 import androidx.health.connect.client.PermissionController
 import androidx.lifecycle.ViewModelProvider
@@ -47,6 +48,14 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        // Creature sprites live in assets/beasts; the shared UI loads them through BeastArt.
+        val assetManager = applicationContext.assets
+        com.sparkborne.app.ui.hero.BeastArt.loader = { path ->
+            runCatching {
+                assetManager.open(path).use { android.graphics.BitmapFactory.decodeStream(it) }?.asImageBitmap()
+            }.getOrNull()
+        }
 
         viewModel = ViewModelProvider(this)[SparkborneViewModel::class.java]
 
