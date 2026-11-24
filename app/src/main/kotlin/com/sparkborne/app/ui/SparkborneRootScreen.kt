@@ -13,6 +13,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -316,6 +317,7 @@ fun SparkborneRootScreen(
                 horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                val attention = com.sparkborne.app.ui.hero.attentionOf(game)
                 SparkborneTab.entries.filter { it.showInBottomBar }.forEach { tab ->
                     val selected = state.selectedTab == tab
                     Surface(
@@ -331,7 +333,20 @@ fun SparkborneRootScreen(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.spacedBy(2.dp),
                         ) {
-                            Text(tab.badge, fontSize = 16.sp)
+                            Box {
+                                Text(tab.badge, fontSize = 16.sp)
+                                com.sparkborne.app.ui.hero.AlertPip(
+                                    count = when (tab) {
+                                        SparkborneTab.ACTIVITY -> attention.activity
+                                        SparkborneTab.INVENTORY -> attention.inventory
+                                        SparkborneTab.MONSTERS -> attention.beasts
+                                        else -> 0
+                                    },
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .offset(x = 14.dp, y = (-6).dp),
+                                )
+                            }
                             Text(
                                 text = tab.label.uppercase(),
                                 fontSize = 9.sp,

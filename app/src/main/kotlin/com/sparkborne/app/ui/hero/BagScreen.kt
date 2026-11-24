@@ -90,7 +90,7 @@ fun BagScreen(state: GameState, errorMessage: String?, actions: HeroActions, ini
                 }
             }
 
-            BannerTabs(BagFilter.entries, filter, { it.label }, { it.glyph }) { filter = it }
+            BannerTabs(BagFilter.entries, filter, { it.label }, { it.glyph }, badge = { if (it == BagFilter.SPOILS) p.totalSkillChests() else 0 }) { filter = it }
 
             val entries = buildList {
                 if (filter == BagFilter.ALL || filter == BagFilter.SPOILS) {

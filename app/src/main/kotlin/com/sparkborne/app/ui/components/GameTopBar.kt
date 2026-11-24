@@ -280,6 +280,14 @@ fun WalkscapeTopHudBar(
                 .statusBarsPadding()
                 .padding(start = 6.dp, top = 2.dp),
         )
+        // Alert pip: unspent talents, chests and affordable upgrades waiting on the hero
+        com.sparkborne.app.ui.hero.AlertPip(
+            count = com.sparkborne.app.ui.hero.attentionOf(game).hero,
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .statusBarsPadding()
+                .padding(start = 52.dp, top = 0.dp),
+        )
 
         // 3. Top-Right Oversized Circular Live Mini-Map Medallion (real zoomed map centered on Hero!)
         LiveMiniMapMedallion(

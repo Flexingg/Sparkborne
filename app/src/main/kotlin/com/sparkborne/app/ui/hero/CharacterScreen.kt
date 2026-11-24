@@ -92,7 +92,21 @@ fun CharacterScreen(
 
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
-            BannerTabs(CharacterPage.entries, page, { it.label }, { it.glyph }) { page = it }
+            val attention = attentionOf(state)
+            BannerTabs(
+                CharacterPage.entries,
+                page,
+                { it.label },
+                { it.glyph },
+                badge = {
+                    when (it) {
+                        CharacterPage.GEAR -> attention.gearUpgrades
+                        CharacterPage.SKILLS -> attention.chests
+                        CharacterPage.TALENTS -> attention.talentPoints
+                        else -> 0
+                    }
+                },
+            ) { page = it }
             AnimatedContent(
                 targetState = page,
                 transitionSpec = { fadeIn(tween(160)) togetherWith fadeOut(tween(120)) },
@@ -140,7 +154,14 @@ fun CharacterScreen(
 // =============================================================================================
 
 @Composable
-fun <T> BannerTabs(items: List<T>, selected: T, label: (T) -> String, glyph: (T) -> String, onSelect: (T) -> Unit) {
+fun <T> BannerTabs(
+    items: List<T>,
+    selected: T,
+    label: (T) -> String,
+    glyph: (T) -> String,
+    badge: (T) -> Int = { 0 },
+    onSelect: (T) -> Unit,
+) {
     val colors = RpgTheme.colors
     Row(
         Modifier
@@ -177,6 +198,7 @@ fun <T> BannerTabs(items: List<T>, selected: T, label: (T) -> String, glyph: (T)
                     Text8(glyph(item), size = 14.sp, color = if (active) c else colors.textMuted)
                     Text8(label(item).uppercase(), size = 8.sp, color = if (active) c else colors.textMuted, letterSpacing = 1.sp)
                 }
+                AlertPip(badge(item), Modifier.align(Alignment.TopEnd).padding(top = 2.dp, end = 2.dp))
             }
         }
     }
@@ -444,6 +466,8 @@ private fun GearSocket(slot: GearSlot, state: GameState, size: Dp, onClick: () -
     val colors = RpgTheme.colors
     val p = state.player
     val id = equippedIdFor(slot, p)
+    val upgrade = upgradeAvailable(state, slot)
+    Box {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         if (slot == GearSlot.WEAPON) {
             val w = GameCatalog.weaponById(p.equippedWeaponId)
@@ -457,6 +481,8 @@ private fun GearSocket(slot: GearSlot, state: GameState, size: Dp, onClick: () -
             }
         }
         Text8(slot.label.uppercase(), size = 8.sp, color = if (id != null) colors.textPrimary else colors.textMuted, letterSpacing = 1.sp)
+    }
+    if (upgrade) UpgradePip(Modifier.align(Alignment.TopEnd).offset(x = 4.dp, y = (-4).dp))
     }
 }
 
