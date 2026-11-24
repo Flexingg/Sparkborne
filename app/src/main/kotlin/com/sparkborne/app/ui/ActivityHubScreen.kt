@@ -2,8 +2,6 @@ package com.sparkborne.app.ui
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.Dp
-import com.sparkborne.app.R
-import com.sparkborne.app.ui.components.monsterDrawableFor
 import com.sparkborne.app.ui.quest.QuestActions
 import com.sparkborne.app.ui.quest.QuestHubScreen
 import com.sparkborne.app.ui.quest.QuestSprites
@@ -47,13 +45,10 @@ fun ActivityTabScreen(
     )
     val monster = state.activeMonster
     val companion: (@Composable (Dp) -> Unit)? = if (monster != null) {
-        { size -> RawPixelSprite(monsterDrawableFor(monster.affinity), monster.name, size) }
+        { size -> com.sparkborne.app.ui.hero.CompanionSprite(monster, size) }
     } else {
         null
     }
-    val enemy: @Composable (Boolean, Dp) -> Unit = { _, size ->
-        RawPixelSprite(R.drawable.pixel_boss_encounter, "Enemy", size)
-    }
-    val sprites = QuestSprites(companion = companion, enemy = enemy)
+    val sprites = QuestSprites(companion = companion)
     QuestHubScreen(state = state, errorMessage = errorMessage, actions = actions, sprites = sprites)
 }

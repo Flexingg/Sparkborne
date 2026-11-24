@@ -115,10 +115,12 @@ class QuestActions(
     val openMap: () -> Unit = {},
 )
 
-/** Bitmap sprites supplied by the platform layer (companion & enemies). */
+/** Sprites for the quest screens. Foes and bosses are drawn procedurally from their names. */
 class QuestSprites(
     val companion: (@Composable (Dp) -> Unit)? = null,
-    val enemy: @Composable (isBoss: Boolean, size: Dp) -> Unit = { _, s -> Box(Modifier.size(s)) },
+    val enemy: @Composable (name: String, isBoss: Boolean, size: Dp, flash: Float) -> Unit = { name, _, s, flash ->
+        com.sparkborne.app.ui.hero.CreatureSprite(name, s, flash = flash)
+    },
 )
 
 fun elementColor(e: RegionElement): Color = when (e) {
@@ -702,6 +704,7 @@ fun WantedPoster(c: ExpeditionContract, cleared: Boolean, onClick: () -> Unit) {
             Text8("— WANTED —", size = 12.sp, color = ink, weight = FontWeight.ExtraBold, letterSpacing = 3.sp, italic = false)
             Text8(c.bossName.uppercase(), size = 16.sp, color = Color(0xFF7A1A14), weight = FontWeight.ExtraBold, align = TextAlign.Center)
             Text8(c.title, size = 10.sp, color = ink, align = TextAlign.Center)
+            com.sparkborne.app.ui.hero.CreatureSprite(c.bossName, 96.dp, animated = !cleared)
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 repeat(3) { i -> Text8("💀", size = 14.sp, modifier = Modifier.alpha(if (i < skulls(c.difficulty)) 1f else 0.2f)) }
             }
@@ -875,7 +878,7 @@ private fun ColumnScope.DelveBriefing(state: GameState, c: ExpeditionContract, s
     Text8("— BOUNTY —", size = 12.sp, color = colors.crimsonHp, letterSpacing = 3.sp, weight = FontWeight.ExtraBold)
     Box(Modifier.size(140.dp), contentAlignment = Alignment.Center) {
         Canvas(Modifier.matchParentSize()) { drawCircle(Brush.radialGradient(listOf(colors.crimsonHp.copy(alpha = 0.35f), Color.Transparent))) }
-        sprites.enemy(true, 120.dp)
+        sprites.enemy(c.bossName, true, 120.dp, 0f)
     }
     Text8(c.bossName.uppercase(), size = 17.sp, color = colors.crimsonHp, weight = FontWeight.ExtraBold, align = TextAlign.Center)
     Text8(c.title, size = 11.sp, color = Color.White, align = TextAlign.Center)
