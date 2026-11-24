@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -35,7 +34,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sparkborne.app.R
@@ -44,7 +42,6 @@ import com.sparkborne.app.ui.components.RpgActionButton
 import com.sparkborne.app.ui.components.RpgPanel
 import com.sparkborne.app.ui.components.RpgProgressBar
 import com.sparkborne.app.ui.components.RpgStatChip
-import com.sparkborne.app.ui.components.monsterDrawableFor
 import com.sparkborne.app.ui.theme.RpgTheme
 import com.sparkborne.game.catalog.GameCatalog
 import com.sparkborne.game.model.GameState
@@ -74,12 +71,6 @@ fun MonstersTabScreen(
     val activeMon = state.activeMonster
 
     val anim = rememberInfiniteTransition(label = "sanctuary_anim")
-    val beastBob by anim.animateFloat(
-        initialValue = -4f,
-        targetValue = 4f,
-        animationSpec = infiniteRepeatable(tween(1200), RepeatMode.Reverse),
-        label = "beast_bob",
-    )
     val eggWobble by anim.animateFloat(
         initialValue = -3.5f,
         targetValue = 3.5f,
@@ -171,13 +162,7 @@ fun MonstersTabScreen(
                                 .clip(RoundedCornerShape(50))
                                 .background(affColor.copy(alpha = 0.22f)),
                         )
-                        PixelSprite(
-                            drawableRes = monsterDrawableFor(mon.affinity),
-                            contentDescription = mon.name,
-                            size = 104.dp,
-                            borderColor = affColor,
-                            modifier = Modifier.offset { IntOffset(0, beastBob.roundToInt()) },
-                        )
+                        com.sparkborne.app.ui.hero.CompanionSprite(mon, 136.dp)
                     }
 
                     // Visual 3-Stage Evolution Track (Hatchling -> Juvenile -> Apex)
@@ -202,6 +187,15 @@ fun MonstersTabScreen(
                                     modifier = Modifier.padding(vertical = 5.dp, horizontal = 4.dp),
                                     horizontalAlignment = Alignment.CenterHorizontally,
                                 ) {
+                                    com.sparkborne.app.ui.hero.CreatureSprite(
+                                        name = species,
+                                        size = 46.dp,
+                                        mirror = true,
+                                        fill = com.sparkborne.app.ui.hero.stageFill(stage),
+                                        animated = isCurrent,
+                                        shadow = reached,
+                                        silhouette = if (reached) null else colors.pixelBorder.copy(alpha = 0.55f),
+                                    )
                                     Text(
                                         text = stage.displayName.uppercase(),
                                         fontSize = 8.sp,
@@ -366,12 +360,7 @@ fun MonstersTabScreen(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                PixelSprite(
-                                    drawableRes = monsterDrawableFor(mon.affinity),
-                                    contentDescription = mon.name,
-                                    size = 44.dp,
-                                    borderColor = affColor,
-                                )
+                                com.sparkborne.app.ui.hero.CompanionSprite(mon, 44.dp)
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(mon.name, fontWeight = FontWeight.Bold, fontSize = 12.sp, maxLines = 1)
                                     Text("Lv.${mon.level} ${mon.stage.displayName}", fontSize = 10.sp, color = colors.textMuted)

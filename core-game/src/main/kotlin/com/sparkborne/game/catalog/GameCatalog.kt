@@ -479,6 +479,25 @@ object GameCatalog {
     fun contractById(id: String): ExpeditionContract? =
         contracts.firstOrNull { it.id == id }
 
+    /** Themed skirmish foes for each contract's delve trail (cycled by node index). */
+    private val skirmishFoes: Map<String, List<String>> = mapOf(
+        "exp_intro_ember_nest" to listOf("Ash Imp", "Cinder Beetle"),
+        "exp_daily_ashlands_patrol" to listOf("Ashen Stalker", "Ash Imp"),
+        "exp_daily_iron_gauntlet" to listOf("Iron Sentry", "Cinder Beetle"),
+        "exp_daily_clarity_vigil" to listOf("Fog Wraith", "Ashen Stalker"),
+        "exp_multi_3d_obsidian_crag" to listOf("Cinder Beetle", "Ashen Stalker", "Ash Imp"),
+        "exp_multi_7d_abyssal_citadel" to listOf("Abyss Crab", "Fog Wraith", "Iron Sentry"),
+        "exp_daily_frost_march" to listOf("Rime Wolf", "Fog Wraith"),
+        "exp_daily_sunstone_caravan" to listOf("Dune Skink", "Ash Imp"),
+        "exp_multi_3d_glacier_rift" to listOf("Rime Wolf", "Fog Wraith", "Abyss Crab"),
+        "exp_multi_5d_ashen_gauntlet" to listOf("Star Shade", "Iron Sentry", "Ashen Stalker"),
+    )
+
+    fun skirmishFoeName(contractId: String, nodeIndex: Int): String {
+        val foes = skirmishFoes[contractId] ?: listOf("Ashen Stalker")
+        return foes[(nodeIndex / 2).mod(foes.size)]
+    }
+
     fun monsterSpeciesName(affinity: MonsterAffinity, stage: MonsterStage): String {
         return when (affinity) {
             MonsterAffinity.IRONCLAD -> when (stage) {

@@ -389,15 +389,12 @@ private fun CombatArena(state: GameState, combat: ActiveCombatState, actions: Qu
                 verticalAlignment = Alignment.Bottom,
             ) {
                 HeroSprite(heroLookOf(state.player), 120.dp)
-                sprites.companion?.let { c -> Box(Modifier.padding(bottom = 4.dp)) { c(52.dp) } }
+                sprites.companion?.let { c -> Box(Modifier.padding(bottom = 2.dp)) { c(76.dp) } }
             }
             // enemy
             Box(Modifier.align(Alignment.BottomEnd).padding(end = 16.dp, bottom = 24.dp).offset(x = shake.value.dp)) {
                 Box(contentAlignment = Alignment.Center) {
-                    sprites.enemy(enemy.isBoss, if (enemy.isBoss) 112.dp else 96.dp)
-                    if (flash.value > 0.01f) {
-                        Box(Modifier.size(if (enemy.isBoss) 112.dp else 96.dp).pixelFrame(fill = Color.White.copy(alpha = flash.value * 0.7f), edge = Color.Transparent, style = FrameStyle.PLATE, unit = 1.dp))
-                    }
+                    sprites.enemy(enemy.name, enemy.isBoss, if (enemy.isBoss) 132.dp else 104.dp, flash.value)
                 }
                 lastDamage?.let { d ->
                     if (pop.value > 0.01f) {

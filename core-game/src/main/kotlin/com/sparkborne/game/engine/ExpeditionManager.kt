@@ -365,7 +365,7 @@ object ExpeditionManager {
                         title = "Delve Skirmish #${idx + 1}",
                         stepsRequired = contract.stepsPerNode,
                         enemy = CombatEnemy(
-                            name = "Ashen Stalker Mk.${idx + 1}",
+                            name = GameCatalog.skirmishFoeName(contract.id, idx),
                             maxHp = hp,
                             currentHp = hp,
                             attack = atk,

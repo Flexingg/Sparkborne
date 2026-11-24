@@ -12,8 +12,6 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
-import com.sparkborne.app.R
-import com.sparkborne.app.ui.components.monsterDrawableFor
 import com.sparkborne.app.ui.hero.CharacterScreen
 import com.sparkborne.app.ui.hero.HeroActions
 import com.sparkborne.game.model.GameState
@@ -62,7 +60,7 @@ fun HeroTabScreen(
     }
     val monster = state.activeMonster
     val companionPortrait: (@Composable (Dp) -> Unit)? = if (monster != null) {
-        { size -> RawPixelSprite(monsterDrawableFor(monster.affinity), monster.name, size) }
+        { size -> com.sparkborne.app.ui.hero.CompanionSprite(monster, size) }
     } else {
         null
     }
